@@ -86,12 +86,14 @@ class FourCombinationWorkflowTests(unittest.TestCase):
                 configuration_digest: str,
                 blueprint_digest: str,
                 required_validations: tuple[str, ...],
+                validation_environment: Path,
             ) -> ValidationReport:
                 report = self.validate_acceptance_candidate(
                     candidate,
                     configuration_digest,
                     blueprint_digest,
                     required_validations,
+                    validation_environment,
                 )
                 return ValidationReport(
                     configuration_digest="0" * 64,
@@ -122,7 +124,10 @@ class FourCombinationWorkflowTests(unittest.TestCase):
         configuration_digest: str,
         blueprint_digest: str,
         required_validations: tuple[str, ...],
+        validation_environment: Path,
     ) -> ValidationReport:
+        if not validation_environment.is_dir():
+            raise AssertionError("Workflow must provide an isolated validation environment.")
         return ValidationReport(
             configuration_digest=configuration_digest,
             blueprint_digest=blueprint_digest,

@@ -38,6 +38,10 @@ from scaffold_compiler.validation import (
     ValidationReport,
     issue_verification_credential,
 )
+from scaffold_compiler.validation_workspace import (
+    cleanup_validation_workspace,
+    prepare_validation_workspace,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -57,7 +61,7 @@ class CompletedGeneration:
 
 
 CandidateValidator = Callable[
-    [CandidateAssemblyResult, str, str, tuple[str, ...]],
+    [CandidateAssemblyResult, str, str, tuple[str, ...], Path],
     ValidationReport,
 ]
 
@@ -127,11 +131,13 @@ def execute_non_interactive_generation(
         store.save(session)
         required_validations = _required_validation_names(catalog, plan.blueprint_ids)
         try:
+            validation_workspace = prepare_validation_workspace(workspace, run_id=run_id)
             report = validator(
                 candidate,
                 configuration.configuration_digest,
                 blueprint_digest,
                 required_validations,
+                validation_workspace.root,
             )
             if (
                 report.configuration_digest != configuration.configuration_digest
@@ -182,6 +188,13 @@ def execute_non_interactive_generation(
 
         session = transition_session(session, SessionEvent.CLEANUP_STARTED)
         store.save(session)
+        validation_cleanup = cleanup_validation_workspace(validation_workspace)
+        if not validation_cleanup.completed:
+            session = transition_session(session, SessionEvent.CLEANUP_FAILED)
+            store.save(session)
+            raise GenerationWorkflowError(
+                "Validation workspace cleanup is pending and can be retried."
+            )
         cleanup = cleanup_owned_candidate(candidate)
         if not cleanup.completed:
             session = transition_session(session, SessionEvent.CLEANUP_FAILED)
