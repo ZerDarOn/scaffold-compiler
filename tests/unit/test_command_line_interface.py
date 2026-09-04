@@ -4,10 +4,7 @@ import io
 import unittest
 from pathlib import Path
 
-from scaffold_compiler.command_line_interface import (
-    CommandOutcome,
-    run_command_line,
-)
+from scaffold_compiler.command_line_interface import CommandOutcome, run_command_line
 
 
 class RecordingCommandService:
@@ -18,29 +15,11 @@ class RecordingCommandService:
     def preview(self, config_path: Path) -> CommandOutcome:
         return self._record("preview", config_path)
 
-    def generate(self, config_path: Path) -> CommandOutcome:
-        return self._record("generate", config_path)
+    def inspect(self, workspace: Path) -> CommandOutcome:
+        return self._record("inspect", workspace)
 
-    def validate(self, workspace: Path) -> CommandOutcome:
-        return self._record("validate", workspace)
-
-    def status(self, workspace: Path) -> CommandOutcome:
-        return self._record("status", workspace)
-
-    def regenerate(
-        self,
-        workspace: Path,
-        config_path: Path,
-        *,
-        discard_candidate: bool,
-    ) -> CommandOutcome:
-        return self._record("regenerate", workspace, config_path, discard_candidate)
-
-    def finalize(self, workspace: Path) -> CommandOutcome:
-        return self._record("finalize", workspace)
-
-    def cancel(self, workspace: Path) -> CommandOutcome:
-        return self._record("cancel", workspace)
+    def discard(self, workspace: Path) -> CommandOutcome:
+        return self._record("discard", workspace)
 
     def run_non_interactive(self, config_path: Path) -> CommandOutcome:
         return self._record("run-non-interactive", config_path)
@@ -67,110 +46,79 @@ class CommandLineInterfaceTests(unittest.TestCase):
         )
         return exit_code, stdout.getvalue(), stderr.getvalue(), selected_service
 
-    def test_preview_and_generate_accept_configuration_files(self) -> None:
-        for command in ("preview", "generate"):
+    def test_preview_and_inspect_route_only_their_validated_paths(self) -> None:
+        cases = (
+            ("preview", ["preview", "--config", "project.json"], Path("project.json")),
+            ("inspect", ["inspect", "--workspace", "work"], Path("work")),
+        )
+        for command, arguments, expected_path in cases:
             with self.subTest(command=command):
-                exit_code, stdout, stderr, service = self.execute(
-                    [command, "--config", "project.json"]
-                )
-
+                exit_code, stdout, stderr, service = self.execute(arguments)
                 self.assertEqual(exit_code, 0)
                 self.assertEqual(stdout, "completed\n")
                 self.assertEqual(stderr, "")
-                self.assertEqual(service.calls, [(command, (Path("project.json"),))])
+                self.assertEqual(service.calls, [(command, (expected_path,))])
 
-    def test_workspace_commands_route_only_validated_arguments(self) -> None:
-        command_arguments = (
-            ("validate", ["validate", "--workspace", "work"], (Path("work"),)),
-            ("status", ["status", "--workspace", "work"], (Path("work"),)),
-            (
-                "regenerate",
-                [
-                    "regenerate",
-                    "--workspace",
-                    "work",
-                    "--config",
-                    "next.json",
-                    "--discard-candidate",
-                ],
-                (Path("work"), Path("next.json"), True),
-            ),
-            (
-                "cancel",
-                ["cancel", "--workspace", "work", "--confirm", "CANCEL"],
-                (Path("work"),),
-            ),
-        )
-
-        for expected_command, arguments, expected_arguments in command_arguments:
-            with self.subTest(command=expected_command):
-                exit_code, _stdout, stderr, service = self.execute(arguments)
-                self.assertEqual(exit_code, 0)
-                self.assertEqual(stderr, "")
-                self.assertEqual(service.calls, [(expected_command, expected_arguments)])
-
-    def test_finalize_requires_the_exact_explicit_confirmation(self) -> None:
-        invalid_arguments = (
-            ["finalize", "--workspace", "work"],
-            ["finalize", "--workspace", "work", "--confirm", "yes"],
-        )
-        for arguments in invalid_arguments:
+    def test_discard_requires_the_exact_explicit_confirmation(self) -> None:
+        for arguments in (
+            ["discard", "--workspace", "work"],
+            ["discard", "--workspace", "work", "--confirm", "yes"],
+        ):
             with self.subTest(arguments=arguments):
                 exit_code, _stdout, stderr, service = self.execute(arguments)
                 self.assertEqual(exit_code, 2)
-                self.assertIn("FINALIZE", stderr)
+                self.assertIn("DISCARD", stderr)
                 self.assertEqual(service.calls, [])
 
         exit_code, _stdout, stderr, service = self.execute(
-            ["finalize", "--workspace", "work", "--confirm", "FINALIZE"]
+            ["discard", "--workspace", "work", "--confirm", "DISCARD"]
         )
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(service.calls, [("finalize", (Path("work"),))])
+        self.assertEqual(service.calls, [("discard", (Path("work"),))])
 
     def test_non_interactive_run_cannot_bypass_finalize_confirmation(self) -> None:
-        missing_confirmation = [
-            "run",
-            "--config",
-            "project.json",
-            "--non-interactive",
-        ]
-        exit_code, _stdout, stderr, service = self.execute(missing_confirmation)
+        arguments = ["run", "--config", "project.json", "--non-interactive"]
+        exit_code, _stdout, stderr, service = self.execute(arguments)
         self.assertEqual(exit_code, 2)
         self.assertIn("FINALIZE", stderr)
         self.assertEqual(service.calls, [])
 
         exit_code, _stdout, stderr, service = self.execute(
-            [*missing_confirmation, "--confirm-finalize", "FINALIZE"]
+            [*arguments, "--confirm-finalize", "FINALIZE"]
         )
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(
-            service.calls,
-            [("run-non-interactive", (Path("project.json"),))],
-        )
+        self.assertEqual(service.calls, [("run-non-interactive", (Path("project.json"),))])
+
+    def test_retired_lifecycle_commands_are_not_exposed(self) -> None:
+        for command in ("generate", "validate", "status", "regenerate", "finalize", "cancel"):
+            with self.subTest(command=command):
+                exit_code, _stdout, stderr, service = self.execute([command])
+                self.assertEqual(exit_code, 2)
+                self.assertIn("invalid choice", stderr)
+                self.assertEqual(service.calls, [])
 
     def test_domain_failure_returns_stable_nonzero_exit_and_stderr(self) -> None:
         service = RecordingCommandService()
-        service.outcome = CommandOutcome(exit_code=1, message="validation failed")
+        service.outcome = CommandOutcome(exit_code=1, message="workspace is unsafe")
 
         exit_code, stdout, stderr, _service = self.execute(
-            ["validate", "--workspace", "work"],
-            service,
+            ["inspect", "--workspace", "work"], service
         )
 
         self.assertEqual(exit_code, 1)
         self.assertEqual(stdout, "")
-        self.assertEqual(stderr, "validation failed\n")
+        self.assertEqual(stderr, "workspace is unsafe\n")
 
-    def test_source_cleanup_path_is_not_part_of_the_command_surface(self) -> None:
+    def test_arbitrary_source_cleanup_path_is_not_accepted(self) -> None:
         exit_code, _stdout, stderr, service = self.execute(
             [
-                "cancel",
+                "discard",
                 "--workspace",
                 "work",
                 "--confirm",
-                "CANCEL",
+                "DISCARD",
                 "--source",
                 "delete-me",
             ]

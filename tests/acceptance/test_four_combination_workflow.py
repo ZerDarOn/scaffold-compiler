@@ -114,6 +114,7 @@ class FourCombinationWorkflowTests(unittest.TestCase):
             self.assertFalse(target.exists())
             self.assertFalse((root / ".delivery.scaffold.lock").exists())
             self.assertTrue((workspace / "candidate").is_dir())
+            self.assertTrue((workspace / "candidate_ownership.json").is_file())
             failed_session = SessionStateStore(workspace / "session.json").load()
             self.assertEqual(failed_session.state, SessionState.FAILED_RETRYABLE)
             self.assertEqual(failed_session.failed_stage, FailureStage.VERIFY)

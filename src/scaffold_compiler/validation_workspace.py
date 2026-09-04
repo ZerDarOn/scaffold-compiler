@@ -123,6 +123,20 @@ def cleanup_validation_workspace(
     return ValidationWorkspaceCleanupResult(completed=completed, failed_entries=failures)
 
 
+def verify_validation_workspace_ownership(owned: ValidationWorkspace) -> bool:
+    """Check the fixed marker and complete no-link tree without deleting entries."""
+    try:
+        trusted_workspace = owned.workspace.resolve(strict=True)
+    except OSError:
+        return False
+    expected_root = trusted_workspace / "validation-env"
+    if owned.root != expected_root:
+        return False
+    if not expected_root.exists():
+        return True
+    return _preflight_owned_entries(owned, expected_root) is not None
+
+
 def _preflight_owned_entries(
     owned: ValidationWorkspace,
     root: Path,

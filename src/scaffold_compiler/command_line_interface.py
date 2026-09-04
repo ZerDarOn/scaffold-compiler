@@ -34,23 +34,9 @@ class ScaffoldCommandService(Protocol):
 
     def preview(self, config_path: Path) -> CommandOutcome: ...
 
-    def generate(self, config_path: Path) -> CommandOutcome: ...
+    def inspect(self, workspace: Path) -> CommandOutcome: ...
 
-    def validate(self, workspace: Path) -> CommandOutcome: ...
-
-    def status(self, workspace: Path) -> CommandOutcome: ...
-
-    def regenerate(
-        self,
-        workspace: Path,
-        config_path: Path,
-        *,
-        discard_candidate: bool,
-    ) -> CommandOutcome: ...
-
-    def finalize(self, workspace: Path) -> CommandOutcome: ...
-
-    def cancel(self, workspace: Path) -> CommandOutcome: ...
+    def discard(self, workspace: Path) -> CommandOutcome: ...
 
     def run_non_interactive(self, config_path: Path) -> CommandOutcome: ...
 
@@ -77,8 +63,10 @@ def run_command_line(
         parsed = parser.parse_args(arguments)
     except _CommandLineUsageError as error:
         message = str(error)
-        if "--confirm" in message or "--confirm-finalize" in message:
-            message = f"{message}; explicit FINALIZE or CANCEL confirmation is required"
+        if "--confirm-finalize" in message:
+            message = f"{message}; explicit FINALIZE confirmation is required"
+        elif "--confirm" in message:
+            message = f"{message}; explicit DISCARD confirmation is required"
         stderr.write(f"usage error: {message}\n")
         return _EXIT_USAGE_ERROR
 
@@ -99,26 +87,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = _SafeArgumentParser(prog="scaffold-compiler")
     commands = parser.add_subparsers(dest="command", required=True)
 
-    for command in ("preview", "generate"):
-        command_parser = commands.add_parser(command)
-        command_parser.add_argument("--config", required=True, type=Path)
+    preview = commands.add_parser("preview")
+    preview.add_argument("--config", required=True, type=Path)
 
-    for command in ("validate", "status"):
-        command_parser = commands.add_parser(command)
-        command_parser.add_argument("--workspace", required=True, type=Path)
+    inspect = commands.add_parser("inspect")
+    inspect.add_argument("--workspace", required=True, type=Path)
 
-    regenerate = commands.add_parser("regenerate")
-    regenerate.add_argument("--workspace", required=True, type=Path)
-    regenerate.add_argument("--config", required=True, type=Path)
-    regenerate.add_argument("--discard-candidate", action="store_true", required=True)
-
-    finalize = commands.add_parser("finalize")
-    finalize.add_argument("--workspace", required=True, type=Path)
-    finalize.add_argument("--confirm", required=True, choices=("FINALIZE",))
-
-    cancel = commands.add_parser("cancel")
-    cancel.add_argument("--workspace", required=True, type=Path)
-    cancel.add_argument("--confirm", required=True, choices=("CANCEL",))
+    discard = commands.add_parser("discard")
+    discard.add_argument("--workspace", required=True, type=Path)
+    discard.add_argument("--confirm", required=True, choices=("DISCARD",))
 
     non_interactive = commands.add_parser("run")
     non_interactive.add_argument("--config", required=True, type=Path)
@@ -138,22 +115,10 @@ def _dispatch(
     command = parsed.command
     if command == "preview":
         return service.preview(parsed.config)
-    if command == "generate":
-        return service.generate(parsed.config)
-    if command == "validate":
-        return service.validate(parsed.workspace)
-    if command == "status":
-        return service.status(parsed.workspace)
-    if command == "regenerate":
-        return service.regenerate(
-            parsed.workspace,
-            parsed.config,
-            discard_candidate=parsed.discard_candidate,
-        )
-    if command == "finalize":
-        return service.finalize(parsed.workspace)
-    if command == "cancel":
-        return service.cancel(parsed.workspace)
+    if command == "inspect":
+        return service.inspect(parsed.workspace)
+    if command == "discard":
+        return service.discard(parsed.workspace)
     if command == "run":
         return service.run_non_interactive(parsed.config)
     raise AssertionError("Argument parser returned an unknown command.")

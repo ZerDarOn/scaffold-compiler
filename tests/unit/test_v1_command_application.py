@@ -9,8 +9,13 @@ from unittest.mock import patch
 
 from scaffold_compiler.candidate_project_assembler import CandidateAssemblyResult
 from scaffold_compiler.command_line_interface import CommandOutcome
+from scaffold_compiler.failed_workspace_recovery import (
+    FailedWorkspaceDiscardResult,
+    FailedWorkspaceInspection,
+)
 from scaffold_compiler.generation_workflow import CandidateValidator, CompletedGeneration
 from scaffold_compiler.project_configuration import DatabaseChoice, ProjectConfiguration
+from scaffold_compiler.session_state_store import FailureStage, SessionState
 from scaffold_compiler.v1_command_application import GenerationRunner, V1CommandApplication
 from scaffold_compiler.validation import ValidationCheck, ValidationReport, ValidationStatus
 
@@ -126,35 +131,79 @@ class V1CommandApplicationTests(unittest.TestCase):
             self.assertEqual(malformed, CommandOutcome(1, "Configuration could not be loaded."))
             self.assertEqual(missing, CommandOutcome(1, "Configuration could not be loaded."))
 
-    def test_interactive_commands_fail_explicitly_until_stateful_driver_exists(self) -> None:
+    def test_preview_is_deterministic_and_does_not_create_a_workspace(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "project.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "project_name": "Preview API",
+                        "package_name": "preview_api",
+                        "target_directory": "delivery",
+                        "database": "none",
+                        "container": "none",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            application = V1CommandApplication(
+                catalog_root=Path(__file__).parents[2] / "blueprints",
+                working_directory=root,
+                home_directory=root / "home",
+                uv_executable=None,
+                environment={},
+            )
+
+            first = application.preview(config)
+            second = application.preview(config)
+
+            self.assertEqual(first, second)
+            self.assertEqual(first.exit_code, 0)
+            summary = json.loads(first.message)
+            self.assertEqual(summary["target_name"], "delivery")
+            self.assertIn("fastapi-http-api", summary["blueprints"])
+            self.assertFalse((root / "delivery").exists())
+            self.assertFalse(any(".scaffold-" in path.name for path in root.iterdir()))
+
+    def test_inspect_and_discard_route_recovery_results_without_uv(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             catalog_root = root / "blueprints"
             catalog_root.mkdir()
-            uv_executable = root / "uv"
-            uv_executable.write_bytes(b"uv")
             application = V1CommandApplication(
                 catalog_root=catalog_root,
                 working_directory=root,
                 home_directory=root / "home",
-                uv_executable=uv_executable,
+                uv_executable=None,
                 environment={},
             )
-
-            outcomes = (
-                application.preview(root / "config.json"),
-                application.generate(root / "config.json"),
-                application.validate(root / "workspace"),
-                application.status(root / "workspace"),
-                application.regenerate(
-                    root / "workspace", root / "config.json", discard_candidate=True
-                ),
-                application.finalize(root / "workspace"),
-                application.cancel(root / "workspace"),
+            inspection = FailedWorkspaceInspection(
+                run_id="run-1",
+                state=SessionState.FAILED_RETRYABLE,
+                failed_stage=FailureStage.VERIFY,
+                candidate_digest="d" * 64,
+                failed_gates=("pytest",),
+                evidence_valid=True,
             )
+            with (
+                patch(
+                    "scaffold_compiler.v1_command_application.inspect_failed_workspace",
+                    return_value=inspection,
+                ) as inspect_workspace,
+                patch(
+                    "scaffold_compiler.v1_command_application.discard_failed_workspace",
+                    return_value=FailedWorkspaceDiscardResult(True),
+                ) as discard_workspace,
+            ):
+                inspected = application.inspect(Path(".delivery.scaffold-run-1"))
+                discarded = application.discard(Path(".delivery.scaffold-run-1"))
 
-            self.assertTrue(all(outcome.exit_code == 1 for outcome in outcomes))
-            self.assertTrue(all("not available" in outcome.message for outcome in outcomes))
+            self.assertEqual(json.loads(inspected.message)["failed_gates"], ["pytest"])
+            self.assertEqual(discarded.exit_code, 0)
+            expected = root / ".delivery.scaffold-run-1"
+            inspect_workspace.assert_called_once_with(expected)
+            discard_workspace.assert_called_once_with(expected)
 
 
 if __name__ == "__main__":

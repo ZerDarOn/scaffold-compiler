@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scaffold_compiler.blueprint_catalog import BlueprintCatalog
+from scaffold_compiler.candidate_ownership_store import CandidateOwnershipStore
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     CandidateFileRecord,
@@ -38,6 +39,7 @@ from scaffold_compiler.validation import (
     ValidationReport,
     issue_verification_credential,
 )
+from scaffold_compiler.validation_report_store import ValidationReportStore
 from scaffold_compiler.validation_workspace import (
     cleanup_validation_workspace,
     prepare_validation_workspace,
@@ -86,6 +88,8 @@ def execute_non_interactive_generation(
     try:
         workspace.mkdir()
         store = SessionStateStore(workspace / "session.json")
+        candidate_store = CandidateOwnershipStore(workspace / "candidate_ownership.json")
+        report_store = ValidationReportStore(workspace / "validation_report.json")
         session = GenerationSession.new(
             run_id=run_id,
             configuration_digest=configuration.configuration_digest,
@@ -116,6 +120,7 @@ def execute_non_interactive_generation(
                 raise GenerationWorkflowError(
                     "Selected blueprint bytes changed during materialization."
                 )
+            candidate_store.save(candidate)
         except Exception:
             session = transition_session(session, SessionEvent.MATERIALIZE_FAILED)
             store.save(session)
@@ -154,6 +159,7 @@ def execute_non_interactive_generation(
                 raise GenerationWorkflowError(
                     "Validator report omits a required blueprint validation."
                 )
+            report_store.save(report, workspace)
             credential = issue_verification_credential(
                 report,
                 current_candidate_digest=candidate.digest,
@@ -200,6 +206,15 @@ def execute_non_interactive_generation(
             session = transition_session(session, SessionEvent.CLEANUP_FAILED)
             store.save(session)
             raise GenerationWorkflowError("Candidate cleanup is pending and can be retried.")
+        try:
+            report_store.path.unlink()
+            candidate_store.path.unlink()
+        except OSError:
+            session = transition_session(session, SessionEvent.CLEANUP_FAILED)
+            store.save(session)
+            raise GenerationWorkflowError(
+                "Candidate ownership cleanup is pending and can be retried."
+            ) from None
         session = transition_session(session, SessionEvent.CLEANUP_SUCCEEDED)
         store.save(session)
 

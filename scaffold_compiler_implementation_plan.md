@@ -553,13 +553,13 @@ Xzt-vital/
 | 6.1 Finalize 与恢复失败测试 | DONE | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁、清理与事务 journal 全覆盖 |
 | 6.2 Finalize 与恢复最小实现 | DONE | 隐藏只读快照、Windows/Linux no-replace、journal-first 协调、前向恢复、目标锁和精确清理通过 |
 | 6.3 故障注入与幂等修正 | DONE | 复制四边界、意图/结果/恢复写盘、移动前后、重复恢复和部分清理重试通过；103 tests passed |
-| 7.1 CLI 行为失败测试 | DONE | 八类路由、稳定退出码、未知删除参数、精确确认词和非交互确认均覆盖 |
-| 7.2 CLI 最小实现 | DONE | 薄 argparse 适配层只调用应用服务协议，不删除、不渲染、不执行 Shell；109 tests passed |
+| 7.1 CLI 行为失败测试 | DONE | `preview/inspect/discard/run` 四类真实命令、稳定退出码、未知删除参数和精确确认词均覆盖；未实现的旧生命周期命令不再暴露 |
+| 7.2 CLI 与失败恢复实现 | DONE | 薄 argparse 仅路由应用协议；确定性预览、外部候选/验证证据、只读检查、取消意图先落盘与精确可重试丢弃已接通 |
 | 7.3 一次性发布包失败测试 | DONE | 确定性、开发仓库、损坏/额外内容、竞态修改、失败重试与父进程退出均覆盖 |
 | 7.4 一次性发布包与安全回收 | DONE | 精确清单、W 中冻结 journal、真实 zipapp 外部监督、管道 EOF 和安全重试通过；121 tests passed |
 | 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；M-01/M-03 均已从确定性发布胶囊完成真实生成、全门验证、Finalize 与自清理；M-03 另含隔离 PostgreSQL 启停和迁移；M-02/M-04 Docker 仍待验收 |
 | 8.2 安全与双平台验收 | NOT_STARTED | — |
-| 8.3 文档与发布候选验收 | IN_PROGRESS | README 已覆盖先决条件、四种选择、非交互运行、Finalize/自清理语义、PostgreSQL 秘密输入和当前 Docker/交互命令限制；Docker 文档命令与最终发布候选仍待验收 |
+| 8.3 文档与发布候选验收 | IN_PROGRESS | README 已覆盖先决条件、四种选择、`preview/inspect/discard/run`、Finalize/自清理语义、PostgreSQL 秘密输入和当前 Docker 限制；Docker 文档命令与最终发布候选仍待验收 |
 
 ### Phase 0：建立可执行基线
 
@@ -766,15 +766,15 @@ Xzt-vital/
 #### Task 7.1｜CLI 行为失败测试 ✅
 
 - Input：所有已实现领域能力。
-- Output：配置、计划预览、生成、验证、状态、重新生成、Finalize 确认、取消和非交互模式测试。
+- Output：配置与计划预览、失败证据检查、精确丢弃和已确认非交互运行测试。
 - Risk：CLI 绕过领域状态机或默认执行危险动作。
 - Rollback：仅删除新增测试。
-- Acceptance：Finalize 必须显式确认；CI 可通过配置文件非交互运行；任何错误返回稳定非零退出码。
+- Acceptance：Finalize 与失败工作区丢弃必须分别显式确认；CI 可通过配置文件非交互运行；任何错误返回稳定非零退出码；未实现命令不暴露。
 
 #### Task 7.2｜CLI 最小实现 ✅
 
 - Input：Task 7.1 测试。
-- Output：基于 `argparse` 的薄适配层和人类可读摘要。
+- Output：基于 `argparse` 的薄适配层、确定性预览、JSON 失败证据摘要和精确恢复控制器。
 - Risk：业务规则散落进命令分支。
 - Rollback：回退 CLI；领域模块保持不变。
 - Acceptance：Task 7.1 全部通过；CLI 不直接删除、渲染或执行 Shell 字符串。
@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：150 tests passed、126 subtests passed；M-01/M-03 均已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；M-03 另通过隔离 PostgreSQL 18 启停、Alembic、SQL、数据库 readiness 和回滚；合法长包名的生成导入已固定换行；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
+- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；一次性胶囊已收窄为 `preview / inspect / discard / run`，并完成失败工作区证据持久化、安全检查与可重试清理；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
+- Tests：163 tests passed、144 subtests passed；M-01/M-03 均已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；失败验证链路已从胶囊完成证据检查与精确清理；M-03 另通过隔离 PostgreSQL 18 启停、Alembic、SQL、数据库 readiness 和回滚；合法长包名的生成导入已固定换行；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
 - Next：为 Task 8.1 接入 M-02/M-04 Docker 运行时验证；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。

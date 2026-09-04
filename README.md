@@ -60,6 +60,36 @@ $env:DATABASE_URL = "postgresql+asyncpg://user:password@127.0.0.1:5432/example"
 The URL is passed to controlled validation processes through the environment and is redacted from
 captured process output. It is not written into the finalized project.
 
+## Preview and recover a failed run
+
+`preview` validates the configuration and prints deterministic JSON containing the selected
+blueprints and required gates. It does not require `uv` and creates no workspace or target:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz preview `
+  --config .\project.json
+```
+
+When `run` fails, its error names the preserved hidden workspace. Inspect its bound state, candidate
+digest, and failed gates without needing `uv` or database credentials:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz inspect `
+  --workspace .\.example-api.scaffold-<run-id>
+```
+
+After diagnosis, explicitly discard only that failed workspace:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz discard `
+  --workspace .\.example-api.scaffold-<run-id> `
+  --confirm DISCARD
+```
+
+Discard first validates the session binding, workspace name, allowed root entries, candidate file
+hashes, and validation-environment marker. Any changed, linked, extra, or ambiguous entry blocks
+cleanup. Committed, cleanup-pending, and ambiguous sessions are never discardable.
+
 ## Finalize and self-cleanup semantics
 
 The command assembles and validates a candidate in a hidden, run-owned sibling workspace. Only a
@@ -71,10 +101,11 @@ a native no-replace directory move.
 - Generator self-cleanup is armed only after the project transaction reports success.
 - The external supervisor waits for the generator process to exit, verifies the exact capsule
   manifest again, then deletes only manifest-owned files. A changed or extra entry blocks deletion.
-- A failed run preserves the capsule so the failure can be inspected or retried.
+- A failed run preserves the capsule so the evidence can be inspected, explicitly discarded, or the
+  generation retried as a new run.
 
-Interactive lifecycle commands are not yet available in V1. The supported release path is the fully
-confirmed non-interactive `run` command above.
+V1 intentionally exposes only `preview`, `inspect`, `discard`, and the fully confirmed `run` path.
+It does not claim to manage or upgrade a project after Finalize.
 
 ## Development baseline
 
