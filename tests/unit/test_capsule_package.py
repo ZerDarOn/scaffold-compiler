@@ -20,6 +20,7 @@ from scaffold_compiler.capsule_package import (
     start_capsule_cleanup_supervisor,
     verify_capsule_from_entry,
     wait_for_parent_eof,
+    write_capsule_cleanup_journal,
 )
 
 CAPSULE_ID = "12345678-1234-4234-8234-123456789abc"
@@ -266,8 +267,13 @@ class CapsuleCleanupTests(unittest.TestCase):
             root = Path(directory)
             capsule = build_capsule(root)
             verified = verify_capsule_from_entry(capsule / "scaffold_compiler.pyz")
+            workspace = root / "workspace"
+            workspace.mkdir()
+            journal_path = workspace / "capsule_cleanup_journal.json"
+            write_capsule_cleanup_journal(verified, journal_path)
             supervisor = start_capsule_cleanup_supervisor(
                 verified,
+                journal_path=journal_path,
                 interpreter=Path(sys.executable),
                 working_directory=root,
             )
@@ -280,12 +286,64 @@ class CapsuleCleanupTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             self.assertFalse(capsule.exists())
+            self.assertFalse(workspace.exists())
+
+    def test_supervisor_refuses_a_tampered_cleanup_journal_without_deleting(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            capsule = build_capsule(root)
+            verified = verify_capsule_from_entry(capsule / "scaffold_compiler.pyz")
+            workspace = root / "workspace"
+            workspace.mkdir()
+            journal_path = workspace / "capsule_cleanup_journal.json"
+            write_capsule_cleanup_journal(verified, journal_path)
+            journal_path.write_text("{}\n", encoding="utf-8")
+
+            with self.assertRaises(CapsuleOwnershipError):
+                start_capsule_cleanup_supervisor(
+                    verified,
+                    journal_path=journal_path,
+                    interpreter=Path(sys.executable),
+                    working_directory=root,
+                )
+
+            self.assertTrue(capsule.exists())
+            self.assertTrue(journal_path.exists())
+
+    def test_supervisor_preserves_journal_when_cleanup_workspace_is_not_empty(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            capsule = build_capsule(root)
+            verified = verify_capsule_from_entry(capsule / "scaffold_compiler.pyz")
+            workspace = root / "workspace"
+            workspace.mkdir()
+            journal_path = workspace / "capsule_cleanup_journal.json"
+            write_capsule_cleanup_journal(verified, journal_path)
+            (workspace / "diagnostics.txt").write_text("keep\n", encoding="utf-8")
+            supervisor = start_capsule_cleanup_supervisor(
+                verified,
+                journal_path=journal_path,
+                interpreter=Path(sys.executable),
+                working_directory=root,
+            )
+
+            supervisor.signal_parent_exit()
+            exit_code = supervisor.process.wait(timeout=5)
+
+            self.assertEqual(exit_code, 1)
+            self.assertFalse(capsule.exists())
+            self.assertTrue(journal_path.exists())
+            self.assertTrue((workspace / "diagnostics.txt").exists())
 
     def test_supervisor_refuses_interpreter_or_working_directory_inside_capsule(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             capsule = build_capsule(root)
             verified = verify_capsule_from_entry(capsule / "scaffold_compiler.pyz")
+            workspace = root / "workspace"
+            workspace.mkdir()
+            journal_path = workspace / "capsule_cleanup_journal.json"
+            write_capsule_cleanup_journal(verified, journal_path)
 
             for interpreter, working_directory in (
                 (capsule / "scaffold_compiler.pyz", root),
@@ -300,6 +358,7 @@ class CapsuleCleanupTests(unittest.TestCase):
                 ):
                     start_capsule_cleanup_supervisor(
                         verified,
+                        journal_path=journal_path,
                         interpreter=interpreter,
                         working_directory=working_directory,
                     )

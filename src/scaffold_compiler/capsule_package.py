@@ -25,6 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 _MANIFEST_NAME: Final = "capsule_manifest.json"
 _ENTRY_NAME: Final = "scaffold_compiler.pyz"
+_CLEANUP_JOURNAL_NAME: Final = "capsule_cleanup_journal.json"
 _SCHEMA_VERSION: Final = 1
 _VERSION_PATTERN: Final = re.compile(r"^[0-9]+(?:\.[0-9]+){2}(?:[a-z0-9.-]*)?$")
 
@@ -65,6 +66,16 @@ class CapsuleCleanupResult:
 
     completed: bool
     failed_entries: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class CapsuleCleanupJournal:
+    """Frozen external facts authorizing one capsule cleanup attempt."""
+
+    path: Path
+    entry_path: Path
+    capsule_id: str
+    manifest_sha256: str
 
 
 @dataclass(slots=True)
@@ -226,9 +237,36 @@ def wait_for_parent_eof(read_file_descriptor: int, on_eof: Callable[[], None]) -
     on_eof()
 
 
+def write_capsule_cleanup_journal(
+    capsule: VerifiedCapsule,
+    journal_path: Path,
+) -> CapsuleCleanupJournal:
+    """Persist cleanup authority outside the disposable capsule before supervision."""
+    current = verify_capsule_from_entry(capsule.entry_path)
+    if current != capsule:
+        raise CapsuleOwnershipError("Capsule changed before cleanup journal creation.")
+    if not journal_path.is_absolute() or journal_path.name != _CLEANUP_JOURNAL_NAME:
+        raise ValueError("Capsule cleanup journal path is invalid.")
+    if not journal_path.parent.is_dir() or _path_is_within(journal_path, capsule.root):
+        raise ValueError("Capsule cleanup journal must be outside the disposable capsule.")
+    payload = {
+        "capsule_id": capsule.capsule_id,
+        "entry_path": str(capsule.entry_path),
+        "manifest_sha256": capsule.manifest_sha256,
+        "schema_version": _SCHEMA_VERSION,
+    }
+    _write_new_file(
+        journal_path,
+        (json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n").encode(),
+    )
+    LOGGER.info("capsule_cleanup_journal_written capsule_id=%s", capsule.capsule_id)
+    return _load_capsule_cleanup_journal(journal_path)
+
+
 def start_capsule_cleanup_supervisor(
     capsule: VerifiedCapsule,
     *,
+    journal_path: Path,
     interpreter: Path,
     working_directory: Path,
 ) -> CapsuleCleanupSupervisor:
@@ -236,6 +274,13 @@ def start_capsule_cleanup_supervisor(
     current = verify_capsule_from_entry(capsule.entry_path)
     if current != capsule:
         raise CapsuleOwnershipError("Capsule changed before cleanup supervision.")
+    journal = _load_capsule_cleanup_journal(journal_path)
+    if (
+        journal.entry_path != capsule.entry_path
+        or journal.capsule_id != capsule.capsule_id
+        or journal.manifest_sha256 != capsule.manifest_sha256
+    ):
+        raise CapsuleOwnershipError("Cleanup journal does not bind this capsule.")
     resolved_interpreter = interpreter.resolve(strict=True)
     resolved_working_directory = working_directory.resolve(strict=True)
     if not resolved_interpreter.is_file():
@@ -255,7 +300,7 @@ def start_capsule_cleanup_supervisor(
         "_capsule_supervisor_main()"
     )
     process = subprocess.Popen(
-        (str(resolved_interpreter), "-S", "-c", supervisor_code, str(capsule.entry_path)),
+        (str(resolved_interpreter), "-S", "-c", supervisor_code, str(journal.path)),
         cwd=resolved_working_directory,
         env=environment,
         stdin=subprocess.PIPE,
@@ -279,11 +324,75 @@ def _capsule_supervisor_main() -> None:
     while sys.stdin.buffer.read(8192):
         pass
     try:
-        capsule = verify_capsule_from_entry(Path(sys.argv[1]))
+        journal = _load_capsule_cleanup_journal(Path(sys.argv[1]))
+        if not journal.entry_path.parent.exists():
+            _finish_cleanup_journal(journal.path)
+            raise SystemExit(0)
+        capsule = verify_capsule_from_entry(journal.entry_path)
+        if (
+            capsule.capsule_id != journal.capsule_id
+            or capsule.manifest_sha256 != journal.manifest_sha256
+        ):
+            raise CapsuleOwnershipError("Cleanup journal capsule binding is invalid.")
         result = cleanup_verified_capsule(capsule)
     except (CapsuleOwnershipError, OSError, ValueError):
         raise SystemExit(1) from None
+    if result.completed:
+        try:
+            _finish_cleanup_journal(journal.path)
+        except OSError:
+            raise SystemExit(1) from None
     raise SystemExit(0 if result.completed else 1)
+
+
+def _load_capsule_cleanup_journal(journal_path: Path) -> CapsuleCleanupJournal:
+    if not journal_path.is_absolute() or journal_path.name != _CLEANUP_JOURNAL_NAME:
+        raise CapsuleOwnershipError("Capsule cleanup journal path is invalid.")
+    try:
+        record = json.loads(journal_path.read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or set(record) != {
+            "capsule_id",
+            "entry_path",
+            "manifest_sha256",
+            "schema_version",
+        }:
+            raise TypeError("Cleanup journal fields are invalid.")
+        if record["schema_version"] != _SCHEMA_VERSION:
+            raise ValueError("Cleanup journal schema is invalid.")
+        capsule_id = record["capsule_id"]
+        entry_value = record["entry_path"]
+        manifest_sha256 = record["manifest_sha256"]
+        if not all(isinstance(value, str) for value in (capsule_id, entry_value, manifest_sha256)):
+            raise TypeError("Cleanup journal values are invalid.")
+        _validate_capsule_id(capsule_id)
+        if not re.fullmatch(r"[0-9a-f]{64}", manifest_sha256):
+            raise ValueError("Cleanup journal digest is invalid.")
+        entry_path = Path(entry_value)
+        if not entry_path.is_absolute() or entry_path.name != _ENTRY_NAME:
+            raise ValueError("Cleanup journal entry path is invalid.")
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError) as error:
+        raise CapsuleOwnershipError("Capsule cleanup journal is invalid.") from error
+    return CapsuleCleanupJournal(
+        path=journal_path,
+        entry_path=entry_path,
+        capsule_id=capsule_id,
+        manifest_sha256=manifest_sha256,
+    )
+
+
+def _finish_cleanup_journal(journal_path: Path) -> None:
+    journal_content = journal_path.read_bytes()
+    if any(path != journal_path for path in journal_path.parent.iterdir()):
+        raise OSError("Cleanup workspace still contains other entries.")
+    _unlink_file(journal_path)
+    try:
+        journal_path.parent.rmdir()
+    except OSError:
+        try:
+            _write_new_file(journal_path, journal_content)
+        except OSError:
+            LOGGER.error("capsule_cleanup_journal_restore_failed")
+        raise
 
 
 def _parse_manifest(
