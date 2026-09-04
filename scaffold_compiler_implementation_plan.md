@@ -553,8 +553,8 @@ Xzt-vital/
 | 6.1 Finalize 与恢复失败测试 | DONE | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁、清理与事务 journal 全覆盖 |
 | 6.2 Finalize 与恢复最小实现 | DONE | 隐藏只读快照、Windows/Linux no-replace、journal-first 协调、前向恢复、目标锁和精确清理通过 |
 | 6.3 故障注入与幂等修正 | DONE | 复制四边界、意图/结果/恢复写盘、移动前后、重复恢复和部分清理重试通过；103 tests passed |
-| 7.1 CLI 行为失败测试 | NOT_STARTED | — |
-| 7.2 CLI 最小实现 | NOT_STARTED | — |
+| 7.1 CLI 行为失败测试 | DONE | 八类路由、稳定退出码、未知删除参数、精确确认词和非交互确认均覆盖 |
+| 7.2 CLI 最小实现 | DONE | 薄 argparse 适配层只调用应用服务协议，不删除、不渲染、不执行 Shell；109 tests passed |
 | 7.3 一次性发布包失败测试 | NOT_STARTED | — |
 | 7.4 一次性发布包与安全回收 | NOT_STARTED | — |
 | 8.1 四组合端到端矩阵 | NOT_STARTED | — |
@@ -763,7 +763,7 @@ Xzt-vital/
 
 ### Phase 7：CLI 与一次性发布包
 
-#### Task 7.1｜CLI 行为失败测试
+#### Task 7.1｜CLI 行为失败测试 ✅
 
 - Input：所有已实现领域能力。
 - Output：配置、计划预览、生成、验证、状态、重新生成、Finalize 确认、取消和非交互模式测试。
@@ -771,7 +771,7 @@ Xzt-vital/
 - Rollback：仅删除新增测试。
 - Acceptance：Finalize 必须显式确认；CI 可通过配置文件非交互运行；任何错误返回稳定非零退出码。
 
-#### Task 7.2｜CLI 最小实现
+#### Task 7.2｜CLI 最小实现 ✅
 
 - Input：Task 7.1 测试。
 - Output：基于 `argparse` 的薄适配层和人类可读摘要。
@@ -871,7 +871,7 @@ Xzt-vital/
 ## 15. 当前状态快照
 
 - Done：架构方案、Phases 0–3、Tasks 4.1–4.4、Phase 5 和 Phase 6；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：生成器 103 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
-- Next：Task 7.1——CLI 行为失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Tests：生成器 109 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
+- Next：Task 7.3——一次性发布包失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
