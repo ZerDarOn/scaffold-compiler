@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scaffold_compiler.blueprint_catalog import load_blueprint_catalog
-from scaffold_compiler.blueprint_plan_compiler import compile_blueprint_plan
+from scaffold_compiler.blueprint_catalog import BlueprintCatalog, load_blueprint_catalog
+from scaffold_compiler.blueprint_plan_compiler import GenerationPlan, compile_blueprint_plan
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     GeneratedCandidateFile,
@@ -33,6 +33,23 @@ def compile_v1_candidate(
 ) -> CandidateAssemblyResult:
     """Compile one supported configuration without writing its final target path."""
     resolved_catalog_root = catalog_root or Path(__file__).parents[2] / "blueprints"
+    catalog, plan = compile_v1_plan(configuration, catalog_root=resolved_catalog_root)
+    return materialize_v1_candidate(
+        configuration,
+        workspace,
+        catalog=catalog,
+        plan=plan,
+        catalog_root=resolved_catalog_root,
+    )
+
+
+def compile_v1_plan(
+    configuration: ProjectConfiguration,
+    *,
+    catalog_root: Path | None = None,
+) -> tuple[BlueprintCatalog, GenerationPlan]:
+    """Resolve the deterministic V1 plan without writing a candidate tree."""
+    resolved_catalog_root = catalog_root or Path(__file__).parents[2] / "blueprints"
     catalog = load_blueprint_catalog(resolved_catalog_root)
     requested = ["final-project-assembly"]
     if configuration.database is DatabaseChoice.POSTGRES:
@@ -44,7 +61,19 @@ def compile_v1_candidate(
         and configuration.container is ContainerChoice.DOCKER
     ):
         requested.append("postgres-docker-integration")
-    plan = compile_blueprint_plan(catalog, tuple(requested))
+    return catalog, compile_blueprint_plan(catalog, tuple(requested))
+
+
+def materialize_v1_candidate(
+    configuration: ProjectConfiguration,
+    workspace: Path,
+    *,
+    catalog: BlueprintCatalog,
+    plan: GenerationPlan,
+    catalog_root: Path | None = None,
+) -> CandidateAssemblyResult:
+    """Materialize one already-frozen V1 plan into its isolated workspace."""
+    resolved_catalog_root = catalog_root or Path(__file__).parents[2] / "blueprints"
 
     values = {
         "project_name": configuration.project_name,
