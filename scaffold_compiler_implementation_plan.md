@@ -550,9 +550,9 @@ Xzt-vital/
 | 4.5 Docker 与组合适配蓝图 | IN_PROGRESS | M-02/M-04 冻结安装、Ruff、mypy、tests 与 Compose config 通过；镜像/容器验收等待 Docker 守护进程 |
 | 5.1 验证器与进程控制失败测试 | DONE | 超时树终止、非零退出、输出限制、跨边界脱敏、静态扫描、状态与凭证绑定均覆盖 |
 | 5.2 验证器与进程控制最小实现 | DONE | 受控无 Shell 进程、阶段化报告、静态安全扫描与不可伪造摘要绑定；80 tests passed |
-| 6.1 Finalize 与恢复失败测试 | IN_PROGRESS | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁与清理已覆盖；事务 journal 边界待补 |
-| 6.2 Finalize 与恢复最小实现 | IN_PROGRESS | 隐藏只读快照、Windows/Linux no-replace、发布后复核、恢复分类、目标锁和精确候选清理已实现 |
-| 6.3 故障注入与幂等修正 | IN_PROGRESS | 复制四边界、移动后篡改、重复恢复和部分清理重试通过；持久化边界注入待补 |
+| 6.1 Finalize 与恢复失败测试 | DONE | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁、清理与事务 journal 全覆盖 |
+| 6.2 Finalize 与恢复最小实现 | DONE | 隐藏只读快照、Windows/Linux no-replace、journal-first 协调、前向恢复、目标锁和精确清理通过 |
+| 6.3 故障注入与幂等修正 | DONE | 复制四边界、意图/结果/恢复写盘、移动前后、重复恢复和部分清理重试通过；103 tests passed |
 | 7.1 CLI 行为失败测试 | NOT_STARTED | — |
 | 7.2 CLI 最小实现 | NOT_STARTED | — |
 | 7.3 一次性发布包失败测试 | NOT_STARTED | — |
@@ -736,7 +736,7 @@ Xzt-vital/
 
 ### Phase 6：Finalize 与崩溃恢复
 
-#### Task 6.1｜Finalize 与恢复失败测试
+#### Task 6.1｜Finalize 与恢复失败测试 ✅
 
 - Input：状态机、I-01 至 I-11、同盘空目标约束。
 - Output：目标竞态、跨盘、原生 no-replace 不可用、复制前/中/后候选变化、密封后篡改、重复 Finalize、重命名前后崩溃、COMMITTED 后清理失败、歧义状态和陈旧锁测试。
@@ -745,7 +745,7 @@ Xzt-vital/
 - Flag：高风险原子性与删除副作用。
 - Acceptance：测试仅使用受控临时目录；竞态目标从未被替换；每个故障点都有确定恢复结果；提交前后的摘要异常均不得进入成功清理。
 
-#### Task 6.2｜Finalize 与恢复最小实现
+#### Task 6.2｜Finalize 与恢复最小实现 ✅
 
 - Input：Task 6.1 测试、已验证候选和独占锁。
 - Output：隐藏提交快照、复制前后摘要复核、只读密封、Windows/Linux 原生 no-replace 适配器、事务日志、前向恢复、`CLEANUP_PENDING` 和精确所有权清理。
@@ -753,7 +753,7 @@ Xzt-vital/
 - Rollback：提交前删除候选；提交后只向前恢复，绝不自动删除 T。
 - Acceptance：Task 6.1 全部通过；COMMITTED 后所有故障都保留完整 T。
 
-#### Task 6.3｜故障注入与幂等修正
+#### Task 6.3｜故障注入与幂等修正 ✅
 
 - Input：Task 6.2 实现。
 - Output：覆盖每个持久化状态边界的故障注入测试和必要修正。
@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phase 5；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：生成器 80 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
-- Next：继续 Tasks 6.1–6.3——补事务 journal 的意图/结果持久化边界和重启恢复；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Done：架构方案、Phases 0–3、Tasks 4.1–4.4、Phase 5 和 Phase 6；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
+- Tests：生成器 103 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
+- Next：Task 7.1——CLI 行为失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
