@@ -1,8 +1,6 @@
 import asyncio
 from typing import cast
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from ${package_name}.persistence.database_session import (
     AsyncSessionFactory,
     transaction_session,
@@ -13,7 +11,7 @@ class FakeSession:
     committed = False
     rolled_back = False
 
-    async def __aenter__(self) -> "FakeSession":
+    async def __aenter__(self) -> FakeSession:
         return self
 
     async def __aexit__(self, *_args: object) -> None:

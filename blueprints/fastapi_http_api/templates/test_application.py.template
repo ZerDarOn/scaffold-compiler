@@ -1,8 +1,14 @@
+import pytest
+
 from ${package_name}.application import create_application
+from ${package_name}.configuration.application_settings import ApplicationSettings
 
 
-def test_application_has_fixed_metadata_and_cors_is_disabled_by_default() -> None:
-    application = create_application()
+def test_application_has_fixed_metadata_and_cors_is_disabled_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
+    application = create_application(settings=ApplicationSettings())
 
     assert application.title == "${project_name}"
     assert len(application.user_middleware) == 1

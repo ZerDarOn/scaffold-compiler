@@ -1,17 +1,19 @@
 """Database engine construction and shutdown lifecycle."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+type ApplicationLifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
 
 
 def create_database_engine(database_url: str) -> AsyncEngine:
     return create_async_engine(database_url, pool_pre_ping=True)
 
 
-def database_lifespan(engine: AsyncEngine):
+def database_lifespan(engine: AsyncEngine) -> ApplicationLifespan:
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         application.state.database_engine = engine

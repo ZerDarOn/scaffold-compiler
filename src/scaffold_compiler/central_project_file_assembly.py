@@ -355,6 +355,7 @@ select = ["B", "E", "F", "I", "RUF", "SIM", "UP"]
 files = ["src", "tests"]
 mypy_path = "src"
 python_version = "{python_minor}"
+plugins = ["pydantic.mypy"]
 strict = true
 """
 

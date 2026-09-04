@@ -98,28 +98,33 @@ def _core_generated_python_files(
     configuration: ProjectConfiguration,
 ) -> tuple[GeneratedCandidateFile, ...]:
     package = configuration.package_name
-    database_import = ""
+    settings_imports = "from pydantic_settings import BaseSettings, SettingsConfigDict"
     database_field = ""
-    asgi_database_imports = ""
+    asgi_imports = f"""from {package}.application import create_application
+from {package}.configuration.application_settings import ApplicationSettings
+from {package}.observability.logging_configuration import configure_logging"""
     asgi_setup = "application = create_application(settings=ApplicationSettings())"
     if configuration.database is DatabaseChoice.POSTGRES:
-        database_import = "from pydantic import Field\n"
+        settings_imports = """from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict"""
         database_field = (
             "\n    database_url: str = Field(\n"
             '        min_length=1, pattern=r"^postgresql\\+asyncpg://", '
             'validation_alias="DATABASE_URL"\n'
             "    )\n"
         )
-        asgi_database_imports = f'''from collections.abc import AsyncIterator
+        asgi_imports = f"""from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from {package}.application import create_application
+from {package}.configuration.application_settings import ApplicationSettings
+from {package}.observability.logging_configuration import configure_logging
 from {package}.persistence.database_engine import create_database_engine
 from {package}.persistence.database_readiness import database_is_ready
-from {package}.persistence.database_session import create_session_factory
-'''
-        asgi_setup = f'''settings = ApplicationSettings()
+from {package}.persistence.database_session import create_session_factory"""
+        asgi_setup = """settings = ApplicationSettings()
 database_engine = create_database_engine(settings.database_url)
 database_session_factory = create_session_factory(database_engine)
 
@@ -142,11 +147,10 @@ application = create_application(
     settings=settings,
     readiness_probe=readiness_probe,
     lifespan=application_lifespan,
-)'''
+)"""
     settings = f'''"""Environment-backed application settings."""
 
-{database_import}
-from pydantic_settings import BaseSettings, SettingsConfigDict
+{settings_imports}
 
 
 class ApplicationSettings(BaseSettings):
@@ -158,10 +162,7 @@ class ApplicationSettings(BaseSettings):
 {database_field}'''
     asgi = f'''"""ASGI process entrypoint."""
 
-{asgi_database_imports}
-from {package}.application import create_application
-from {package}.configuration.application_settings import ApplicationSettings
-from {package}.observability.logging_configuration import configure_logging
+{asgi_imports}
 
 configure_logging()
 {asgi_setup}

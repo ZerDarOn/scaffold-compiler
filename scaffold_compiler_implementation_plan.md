@@ -546,10 +546,10 @@ Xzt-vital/
 | 4.1 四种黄金项目验收规格 | DONE | 四组合独立文件树、依赖、禁止项与接口契约；61 tests passed |
 | 4.2 集中项目文件装配 | DONE | 四组贡献确定装配，TOML/README/CI/env 验收通过；66 tests passed |
 | 4.3 FastAPI 固定核心蓝图 | DONE | Python 3.14 锁定安装、Ruff、mypy、3 tests、Uvicorn health 全通过 |
-| 4.4 PostgreSQL 纵向蓝图 | NOT_STARTED | — |
-| 4.5 Docker 与组合适配蓝图 | NOT_STARTED | — |
-| 5.1 验证器与进程控制失败测试 | NOT_STARTED | — |
-| 5.2 验证器与进程控制最小实现 | NOT_STARTED | — |
+| 4.4 PostgreSQL 纵向蓝图 | DONE | Python 3.14 锁定安装、Ruff、mypy、4 tests；隔离 PostgreSQL 迁移、SQL 与 HTTP readiness 全通过 |
+| 4.5 Docker 与组合适配蓝图 | IN_PROGRESS | M-02/M-04 冻结安装、Ruff、mypy、tests 与 Compose config 通过；镜像/容器验收等待 Docker 守护进程 |
+| 5.1 验证器与进程控制失败测试 | DONE | 超时树终止、非零退出、输出限制、跨边界脱敏、静态扫描、状态与凭证绑定均覆盖 |
+| 5.2 验证器与进程控制最小实现 | DONE | 受控无 Shell 进程、阶段化报告、静态安全扫描与不可伪造摘要绑定；80 tests passed |
 | 6.1 Finalize 与恢复失败测试 | NOT_STARTED | — |
 | 6.2 Finalize 与恢复最小实现 | NOT_STARTED | — |
 | 6.3 故障注入与幂等修正 | NOT_STARTED | — |
@@ -697,7 +697,7 @@ Xzt-vital/
 - Rollback：回退对应蓝图目录。
 - Acceptance：M-01 的安装、结构与行为测试通过；不包含业务模型、BaseCRUD 或复杂 DI 容器。
 
-#### Task 4.4｜PostgreSQL 纵向蓝图
+#### Task 4.4｜PostgreSQL 纵向蓝图 ✅
 
 - Input：M-03 验收规格、FastAPI 核心扩展点和集中装配器。
 - Output：异步 SQLAlchemy、Alembic、会话边界、readiness、测试、文档贡献和 M-03 锁文件。
@@ -717,7 +717,7 @@ Xzt-vital/
 
 ### Phase 5：验证与进程控制
 
-#### Task 5.1｜验证器与进程控制失败测试
+#### Task 5.1｜验证器与进程控制失败测试 ✅
 
 - Input：验证矩阵、I-01、I-04、I-09。
 - Output：超时、非零退出、输出上限、秘密脱敏、子进程终止、占位符、绝对路径引用、PASS/FAIL/SKIPPED 语义和凭证绑定测试。
@@ -726,7 +726,7 @@ Xzt-vital/
 - Flag：外部副作用与可观测性。
 - Acceptance：故障场景均可重复触发，测试本身不遗留进程。
 
-#### Task 5.2｜验证器与进程控制最小实现
+#### Task 5.2｜验证器与进程控制最小实现 ✅
 
 - Input：Task 5.1 测试与四种验证配置。
 - Output：受控进程执行器、静态扫描器、分阶段验证报告和绑定候选摘要的验证凭证。
@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3，以及 Tasks 4.1–4.3；M-01 已真实安装、质检、测试并启动。
-- Tests：生成器 67 tests passed；M-01 在 Python 3.14 下 Ruff、mypy、3 tests 及 Uvicorn health 通过。
-- Next：Task 4.4——PostgreSQL 纵向蓝图（Docker 守护进程当前不可用，真实数据库验收待环境恢复）。
-- Debt：四种成品项目的 `uv.lock` 按计划推迟至 Tasks 4.3–4.5。
+- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phase 5；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
+- Tests：生成器 80 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
+- Next：Task 6.1——Finalize 与恢复失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
