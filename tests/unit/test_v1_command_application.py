@@ -78,6 +78,8 @@ class V1CommandApplicationTests(unittest.TestCase):
                 self.assertEqual(called["package_name"], "example")
                 self.assertEqual(called["uv_executable"], uv_executable)
                 self.assertEqual(called["validation_environment"], validation_environment)
+                self.assertEqual(called["run_id"], "release-run")
+                self.assertIsNone(called["docker_executable"])
                 self.assertEqual(
                     called["database_url"],
                     "postgresql+asyncpg://user:secret@localhost/example",

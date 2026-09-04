@@ -23,8 +23,9 @@ The detailed architecture, guarantees, and remaining acceptance work are in
 - `uv` 0.12.9 available on `PATH`, or its absolute path in `SCAFFOLD_COMPILER_UV`.
 - For PostgreSQL projects, a disposable PostgreSQL database and a
   `postgresql+asyncpg://...` URL in `DATABASE_URL`.
-- For Docker choices, a running Docker engine. Those delivery gates are still incomplete in this
-  repository and currently cause generation to fail safely.
+- For Docker choices, a Docker CLI and running engine. The CLI may be supplied by absolute path in
+  `SCAFFOLD_COMPILER_DOCKER`. Real M-02/M-04 acceptance is still pending in this repository; an
+  unavailable engine or incomplete cleanup causes generation to fail safely.
 
 ## Run a release capsule
 

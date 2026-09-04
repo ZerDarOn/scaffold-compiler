@@ -20,6 +20,10 @@ class DockerValidationCommandsTests(unittest.TestCase):
             commands = DockerValidationCommands(docker, candidate, resources)
 
             specifications = (
+                commands.inspect_image_absence(),
+                commands.inspect_container_absence(),
+                commands.inspect_image_ownership(),
+                commands.inspect_container_ownership(),
                 commands.build_image(),
                 commands.check_non_root(),
                 commands.start_health_container(),

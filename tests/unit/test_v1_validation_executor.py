@@ -11,6 +11,7 @@ from scaffold_compiler.candidate_project_assembler import (
     CandidateFileRecord,
     calculate_candidate_digest,
 )
+from scaffold_compiler.docker_validation_resources import DockerValidationResources
 from scaffold_compiler.v1_validation_executor import execute_v1_validation
 from scaffold_compiler.validation import (
     ControlledProcessResult,
@@ -391,6 +392,54 @@ class V1ValidationExecutorTests(unittest.TestCase):
                     forbidden_absolute_paths=(root / "outside",),
                     process_runner=mutate_candidate,
                 )
+
+    def test_docker_gates_use_owned_lifecycle_and_cleanup_can_issue_credential(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            uv = root / "uv.exe"
+            uv.write_bytes(b"")
+            docker = root / "docker.exe"
+            docker.write_bytes(b"")
+            candidate = make_candidate(root)
+            validation_id = DockerValidationResources.create(
+                "run-1", candidate.digest
+            ).ownership_label_value
+            names: list[str] = []
+
+            def record(specification: ControlledProcessSpec) -> ControlledProcessResult:
+                names.append(specification.name)
+                if specification.name == "container-health":
+                    return ControlledProcessResult(0, False, '"healthy"\n', "", False, 1)
+                if specification.name.endswith("ownership"):
+                    return ControlledProcessResult(
+                        0,
+                        False,
+                        f"{validation_id}\n",
+                        "",
+                        False,
+                        1,
+                    )
+                return successful_result()
+
+            report = execute_v1_validation(
+                candidate,
+                "0" * 64,
+                "1" * 64,
+                ("docker-build", "container-non-root", "container-health"),
+                package_name="example",
+                uv_executable=uv,
+                validation_environment=root / "validation-env",
+                forbidden_absolute_paths=(root / "outside",),
+                run_id="run-1",
+                docker_executable=docker,
+                process_runner=record,
+            )
+
+            self.assertIn("docker-image-preflight", names)
+            self.assertIn("container-cleanup", names)
+            self.assertIn("docker-image-cleanup", names)
+            self.assertEqual(report.checks[-1].name, "docker-cleanup")
+            issue_verification_credential(report, current_candidate_digest=candidate.digest)
 
 
 if __name__ == "__main__":

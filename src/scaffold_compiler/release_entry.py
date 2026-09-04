@@ -60,6 +60,9 @@ def main(
     if selected_application is None:
         requires_uv = selected_arguments[:1] == ["run"]
         uv_executable = resolve_uv_executable(selected_environment) if requires_uv else None
+        docker_executable = (
+            resolve_docker_executable(selected_environment) if requires_uv else None
+        )
         if requires_uv and uv_executable is None:
             selected_stderr.write(
                 "uv was not found; set SCAFFOLD_COMPILER_UV to an existing executable.\n"
@@ -72,6 +75,7 @@ def main(
                 working_directory=Path.cwd(),
                 home_directory=Path.home(),
                 uv_executable=uv_executable,
+                docker_executable=docker_executable,
                 environment=selected_environment,
             )
         except (OSError, ValueError):
@@ -103,8 +107,23 @@ def main(
 
 def resolve_uv_executable(environment: Mapping[str, str]) -> Path | None:
     """Resolve uv from an explicit release setting or the process PATH."""
-    explicit = environment.get("SCAFFOLD_COMPILER_UV")
-    found = shutil.which("uv") if not explicit else None
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_UV", "uv")
+
+
+def resolve_docker_executable(environment: Mapping[str, str]) -> Path | None:
+    """Resolve an optional Docker CLI without requiring its daemon to be available."""
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_DOCKER", "docker")
+
+
+def _resolve_external_executable(
+    environment: Mapping[str, str],
+    setting_name: str,
+    command_name: str,
+) -> Path | None:
+    explicit = environment.get(setting_name)
+    found = (
+        shutil.which(command_name, path=environment.get("PATH")) if not explicit else None
+    )
     candidate = Path(explicit) if explicit else Path(found) if found else None
     if candidate is None:
         return None

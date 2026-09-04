@@ -7,12 +7,16 @@ import os
 import re
 from collections.abc import Callable
 from pathlib import Path
+from secrets import token_urlsafe
 from typing import Final
 
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     verify_candidate_digest,
 )
+from scaffold_compiler.docker_validation_commands import DockerValidationCommands
+from scaffold_compiler.docker_validation_lifecycle import execute_docker_validation_lifecycle
+from scaffold_compiler.docker_validation_resources import DockerValidationResources
 from scaffold_compiler.validation import (
     ControlledProcessResult,
     ControlledProcessSpec,
@@ -95,6 +99,17 @@ async def check() -> None:
 asyncio.run(check())
 """
 _PACKAGE_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9_]*$")
+_DELIVERY_VALIDATIONS: Final = frozenset(
+    {
+        "docker-build",
+        "container-non-root",
+        "container-health",
+        "compose-config",
+        "compose-up",
+        "compose-health",
+        "compose-cleanup",
+    }
+)
 _VALIDATION_ORDER: Final = {
     name: index
     for index, name in enumerate(
@@ -136,9 +151,12 @@ def execute_v1_validation(
     uv_executable: Path,
     validation_environment: Path,
     database_url: str | None = None,
+    run_id: str | None = None,
+    docker_executable: Path | None = None,
     forbidden_absolute_paths: tuple[Path, ...],
     secrets: tuple[str, ...] = (),
     process_runner: ValidationProcessRunner = run_controlled_process,
+    compose_password_factory: Callable[[], str] = lambda: token_urlsafe(24),
 ) -> ValidationReport:
     """Run supported fixed checks and mark every unavailable required gate as skipped."""
     if not _PACKAGE_NAME_PATTERN.fullmatch(package_name):
@@ -212,9 +230,13 @@ def execute_v1_validation(
     blocking_failure = install_check.status is not ValidationStatus.PASS
     active_phase: ValidationPhase | None = None
     phase_failed = False
-    for name in sorted(
-        required_validations, key=lambda item: (_VALIDATION_ORDER.get(item, 999), item)
-    ):
+    ordered_validations = tuple(
+        sorted(required_validations, key=lambda item: (_VALIDATION_ORDER.get(item, 999), item))
+    )
+    delivery_validations = tuple(
+        name for name in ordered_validations if name in _DELIVERY_VALIDATIONS
+    )
+    for name in (name for name in ordered_validations if name not in _DELIVERY_VALIDATIONS):
         validation = _validation_command(
             name,
             package_name,
@@ -278,6 +300,50 @@ def execute_v1_validation(
         checks.append(check)
         if check.status is not ValidationStatus.PASS:
             phase_failed = True
+
+    if phase_failed:
+        blocking_failure = True
+    if delivery_validations:
+        if blocking_failure:
+            checks.extend(
+                skipped_validation_check(
+                    name,
+                    ValidationPhase.DELIVERY,
+                    required=True,
+                    reason="A prerequisite validation gate did not pass.",
+                )
+                for name in delivery_validations
+            )
+        elif docker_executable is None or run_id is None:
+            checks.extend(
+                skipped_validation_check(
+                    name,
+                    ValidationPhase.DELIVERY,
+                    required=True,
+                    reason="Docker validation is unavailable in this runtime.",
+                )
+                for name in delivery_validations
+            )
+        else:
+            resources = DockerValidationResources.create(run_id, candidate.digest)
+            compose_password = (
+                compose_password_factory()
+                if any(name.startswith("compose-") for name in delivery_validations)
+                else None
+            )
+            docker_commands = DockerValidationCommands(
+                docker_executable,
+                candidate.root,
+                resources,
+                compose_password=compose_password,
+            )
+            checks.extend(
+                execute_docker_validation_lifecycle(
+                    docker_commands,
+                    delivery_validations,
+                    process_runner=process_runner,
+                )
+            )
 
     verify_candidate_digest(candidate)
     report = ValidationReport(

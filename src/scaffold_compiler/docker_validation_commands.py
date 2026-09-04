@@ -43,6 +43,73 @@ class DockerValidationCommands:
         self._resources = resources
         self._compose_password = compose_password
 
+    @property
+    def validation_id(self) -> str:
+        return self._resources.ownership_label_value
+
+    def inspect_image_absence(self) -> ControlledProcessSpec:
+        return self._specification(
+            "docker-image-preflight",
+            (
+                "image",
+                "ls",
+                "--quiet",
+                "--filter",
+                f"reference={self._resources.image_tag}",
+            ),
+        )
+
+    def inspect_container_absence(self) -> ControlledProcessSpec:
+        return self._specification(
+            "container-preflight",
+            (
+                "container",
+                "ls",
+                "--all",
+                "--quiet",
+                "--filter",
+                f"name=^/{self._resources.container_name}$",
+            ),
+        )
+
+    def inspect_image_ownership(self) -> ControlledProcessSpec:
+        return self._specification(
+            "docker-image-ownership",
+            (
+                "image",
+                "inspect",
+                "--format",
+                f'{{{{ index .Config.Labels "{self._resources.ownership_label_name}" }}}}',
+                self._resources.image_tag,
+            ),
+        )
+
+    def inspect_container_ownership(self) -> ControlledProcessSpec:
+        return self._specification(
+            "container-ownership",
+            (
+                "container",
+                "inspect",
+                "--format",
+                f'{{{{ index .Config.Labels "{self._resources.ownership_label_name}" }}}}',
+                self._resources.container_name,
+            ),
+        )
+
+    def inspect_compose_absence(self) -> ControlledProcessSpec:
+        return self._specification(
+            "compose-preflight",
+            (
+                "compose",
+                "ls",
+                "--all",
+                "--filter",
+                f"name={self._resources.compose_project}",
+                "--format",
+                "json",
+            ),
+        )
+
     def build_image(self) -> ControlledProcessSpec:
         return self._specification(
             "docker-build",

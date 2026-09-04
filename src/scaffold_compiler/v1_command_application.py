@@ -43,6 +43,7 @@ class V1CommandApplication:
         working_directory: Path,
         home_directory: Path,
         uv_executable: Path | None,
+        docker_executable: Path | None = None,
         environment: Mapping[str, str] | None = None,
         generation_runner: GenerationRunner = execute_non_interactive_generation,
         run_id_factory: Callable[[], str] | None = None,
@@ -52,6 +53,9 @@ class V1CommandApplication:
         self._home_directory = home_directory.resolve(strict=False)
         self._uv_executable = (
             uv_executable.resolve(strict=True) if uv_executable is not None else None
+        )
+        self._docker_executable = (
+            docker_executable.resolve(strict=True) if docker_executable is not None else None
         )
         self._environment = dict(os.environ if environment is None else environment)
         self._generation_runner = generation_runner
@@ -90,6 +94,8 @@ class V1CommandApplication:
                 uv_executable=uv_executable,
                 validation_environment=validation_environment,
                 database_url=database_url,
+                run_id=run_id,
+                docker_executable=self._docker_executable,
                 forbidden_absolute_paths=(
                     self._catalog_root.parent,
                     candidate.root.parent,

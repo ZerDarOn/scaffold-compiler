@@ -9,7 +9,11 @@ from unittest.mock import Mock, patch
 
 from scaffold_compiler.capsule_package import build_capsule_package
 from scaffold_compiler.command_line_interface import CommandOutcome, ScaffoldCommandService
-from scaffold_compiler.release_entry import main, resolve_uv_executable
+from scaffold_compiler.release_entry import (
+    main,
+    resolve_docker_executable,
+    resolve_uv_executable,
+)
 
 CAPSULE_ID = "12345678-1234-4678-9234-567812345678"
 
@@ -119,6 +123,36 @@ class ReleaseEntryTests(unittest.TestCase):
             self.assertIsNone(
                 resolve_uv_executable({"SCAFFOLD_COMPILER_UV": str(root / "missing")})
             )
+
+    def test_docker_resolution_is_optional_and_uses_its_explicit_setting(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            docker = root / "docker"
+            docker.write_bytes(b"docker")
+
+            self.assertEqual(
+                resolve_docker_executable({"SCAFFOLD_COMPILER_DOCKER": str(docker)}),
+                docker.resolve(),
+            )
+            self.assertIsNone(
+                resolve_docker_executable(
+                    {"SCAFFOLD_COMPILER_DOCKER": str(root / "missing")}
+                )
+            )
+
+    def test_executable_resolution_uses_the_selected_environment_path(self) -> None:
+        with TemporaryDirectory() as directory:
+            docker = Path(directory) / "docker"
+            docker.write_bytes(b"docker")
+
+            with patch(
+                "scaffold_compiler.release_entry.shutil.which",
+                return_value=str(docker),
+            ) as find_executable:
+                resolved = resolve_docker_executable({"PATH": "selected-path"})
+
+            self.assertEqual(resolved, docker.resolve())
+            find_executable.assert_called_once_with("docker", path="selected-path")
 
     def test_tampered_capsule_fails_without_a_traceback_or_cleanup(self) -> None:
         with TemporaryDirectory() as directory:
