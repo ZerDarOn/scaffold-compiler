@@ -5,7 +5,9 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from ${package_name}.errors.application_error import ApplicationError
+from ${package_name}.errors.application_error import (
+    ApplicationError,
+)
 
 LOGGER = logging.getLogger(__name__)
 

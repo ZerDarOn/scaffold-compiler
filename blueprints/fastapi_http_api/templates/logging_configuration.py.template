@@ -4,7 +4,9 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from ${package_name}.observability.request_context_middleware import request_id_context
+from ${package_name}.observability.request_context_middleware import (
+    request_id_context,
+)
 
 
 class JsonLogFormatter(logging.Formatter):

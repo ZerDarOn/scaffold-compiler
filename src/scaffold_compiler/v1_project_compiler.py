@@ -129,9 +129,15 @@ def _core_generated_python_files(
     package = configuration.package_name
     settings_imports = "from pydantic_settings import BaseSettings, SettingsConfigDict"
     database_field = ""
-    asgi_imports = f"""from {package}.application import create_application
-from {package}.configuration.application_settings import ApplicationSettings
-from {package}.observability.logging_configuration import configure_logging"""
+    asgi_imports = f"""from {package}.application import (
+    create_application,
+)
+from {package}.configuration.application_settings import (
+    ApplicationSettings,
+)
+from {package}.observability.logging_configuration import (
+    configure_logging,
+)"""
     asgi_setup = "application = create_application(settings=ApplicationSettings())"
     if configuration.database is DatabaseChoice.POSTGRES:
         settings_imports = """from pydantic import Field
@@ -147,12 +153,24 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from {package}.application import create_application
-from {package}.configuration.application_settings import ApplicationSettings
-from {package}.observability.logging_configuration import configure_logging
-from {package}.persistence.database_engine import create_database_engine
-from {package}.persistence.database_readiness import database_is_ready
-from {package}.persistence.database_session import create_session_factory"""
+from {package}.application import (
+    create_application,
+)
+from {package}.configuration.application_settings import (
+    ApplicationSettings,
+)
+from {package}.observability.logging_configuration import (
+    configure_logging,
+)
+from {package}.persistence.database_engine import (
+    create_database_engine,
+)
+from {package}.persistence.database_readiness import (
+    database_is_ready,
+)
+from {package}.persistence.database_session import (
+    create_session_factory,
+)"""
         asgi_setup = """settings = ApplicationSettings()
 database_engine = create_database_engine(settings.database_url)
 database_session_factory = create_session_factory(database_engine)

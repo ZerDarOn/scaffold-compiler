@@ -1,7 +1,11 @@
 import pytest
 
-from ${package_name}.application import create_application
-from ${package_name}.configuration.application_settings import ApplicationSettings
+from ${package_name}.application import (
+    create_application,
+)
+from ${package_name}.configuration.application_settings import (
+    ApplicationSettings,
+)
 
 
 def test_application_has_fixed_metadata_and_cors_is_disabled_by_default(

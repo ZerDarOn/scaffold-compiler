@@ -1,8 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ${package_name}.application import create_application
-from ${package_name}.configuration.application_settings import ApplicationSettings
+from ${package_name}.application import (
+    create_application,
+)
+from ${package_name}.configuration.application_settings import (
+    ApplicationSettings,
+)
 
 
 def test_health_and_openapi_contract(monkeypatch: pytest.MonkeyPatch) -> None:
