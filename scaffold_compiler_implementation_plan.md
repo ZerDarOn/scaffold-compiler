@@ -555,8 +555,8 @@ Xzt-vital/
 | 6.3 故障注入与幂等修正 | DONE | 复制四边界、意图/结果/恢复写盘、移动前后、重复恢复和部分清理重试通过；103 tests passed |
 | 7.1 CLI 行为失败测试 | DONE | 八类路由、稳定退出码、未知删除参数、精确确认词和非交互确认均覆盖 |
 | 7.2 CLI 最小实现 | DONE | 薄 argparse 适配层只调用应用服务协议，不删除、不渲染、不执行 Shell；109 tests passed |
-| 7.3 一次性发布包失败测试 | NOT_STARTED | — |
-| 7.4 一次性发布包与安全回收 | NOT_STARTED | — |
+| 7.3 一次性发布包失败测试 | DONE | 确定性、开发仓库、损坏/额外内容、竞态修改、失败重试与父进程退出均覆盖 |
+| 7.4 一次性发布包与安全回收 | DONE | 精确所有权清单、真实 zipapp 外部监督、管道 EOF 和逐文件再校验通过；119 tests passed |
 | 8.1 四组合端到端矩阵 | NOT_STARTED | — |
 | 8.2 安全与双平台验收 | NOT_STARTED | — |
 | 8.3 文档与发布候选验收 | NOT_STARTED | — |
@@ -779,7 +779,7 @@ Xzt-vital/
 - Rollback：回退 CLI；领域模块保持不变。
 - Acceptance：Task 7.1 全部通过；CLI 不直接删除、渲染或执行 Shell 字符串。
 
-#### Task 7.3｜一次性发布包失败测试
+#### Task 7.3｜一次性发布包失败测试 ✅
 
 - Input：开发源码、发布标记规则和安全清理约束。
 - Output：可重复打包、开发仓库拒绝自删、损坏清单拒绝、额外文件拒绝、包含 `.git` 拒绝、来源路径不可外部指定、进程退出后回收和清理失败测试。
@@ -788,7 +788,7 @@ Xzt-vital/
 - Flag：不可逆副作用。
 - Acceptance：清单不是精确匹配时 S 中零文件被删除；测试不得宣称能防御同权限恶意代码伪造清单。
 
-#### Task 7.4｜一次性发布包与安全回收
+#### Task 7.4｜一次性发布包与安全回收 ✅
 
 - Input：Task 7.3 测试。
 - Output：确定性发布包构建器、精确文件清单、基于管道 EOF 的外部监督式清理和开发模式保护。
@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3、Tasks 4.1–4.4、Phase 5 和 Phase 6；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：生成器 109 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
-- Next：Task 7.3——一次性发布包失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
+- Tests：生成器 119 tests passed、115 subtests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过；真实 zipapp 的外部监督式回收通过。
+- Next：Task 8.1——从一次性发布包启动到 Finalize 的四组合端到端矩阵；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
