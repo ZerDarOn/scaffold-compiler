@@ -27,6 +27,7 @@ LOGGER = logging.getLogger(__name__)
 
 _DIGEST_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 _CHECK_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9-]*$")
+_ENVIRONMENT_NAME_PATTERN: Final = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _TRUNCATION_MARKER: Final = "\n[output truncated]"
 
 
@@ -59,6 +60,7 @@ class ControlledProcessSpec:
     timeout_seconds: float
     output_limit_bytes: int = 65_536
     secrets: tuple[str, ...] = ()
+    environment: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self) -> None:
         if not _CHECK_NAME_PATTERN.fullmatch(self.name):
@@ -76,6 +78,22 @@ class ControlledProcessSpec:
             raise ValueError("Process output limit must be positive.")
         if any(not secret for secret in self.secrets):
             raise ValueError("Redaction secrets cannot be empty.")
+        if any(
+            not isinstance(item, tuple)
+            or len(item) != 2
+            or not isinstance(item[0], str)
+            or not isinstance(item[1], str)
+            for item in self.environment
+        ):
+            raise ValueError("Process environment overrides must be string pairs.")
+        environment_names = tuple(name for name, _ in self.environment)
+        if len(set(environment_names)) != len(environment_names):
+            raise ValueError("Process environment overrides contain duplicate names.")
+        if any(
+            not _ENVIRONMENT_NAME_PATTERN.fullmatch(name) or "\0" in value
+            for name, value in self.environment
+        ):
+            raise ValueError("Process environment override is invalid.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,12 +199,15 @@ def run_controlled_process(specification: ControlledProcessSpec) -> ControlledPr
     )
     started = time.monotonic()
     creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    environment = os.environ.copy()
+    environment.update(specification.environment)
     process = subprocess.Popen(
         specification.argv,
         cwd=specification.cwd,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=environment,
         shell=False,
         creationflags=creation_flags,
         start_new_session=os.name != "nt",

@@ -115,6 +115,30 @@ class ControlledProcessTests(unittest.TestCase):
         self.assertNotIn("boundary", result.stdout)
         self.assertTrue(result.output_truncated)
 
+    def test_passes_validated_environment_overrides_without_logging_secret_values(self) -> None:
+        secret = "environment-secret"
+        with (
+            TemporaryDirectory() as directory,
+            self.assertLogs("scaffold_compiler.validation", level="INFO") as logs,
+        ):
+            result = run_controlled_process(
+                ControlledProcessSpec(
+                    name="environment-check",
+                    argv=(
+                        sys.executable,
+                        "-c",
+                        "import os; print(os.environ['VALIDATION_SECRET'])",
+                    ),
+                    cwd=Path(directory),
+                    timeout_seconds=5,
+                    secrets=(secret,),
+                    environment=(("VALIDATION_SECRET", secret),),
+                )
+            )
+
+        self.assertEqual(result.stdout.strip(), "[REDACTED]")
+        self.assertNotIn(secret, "\n".join(logs.output))
+
 
 class ValidationReportTests(unittest.TestCase):
     def test_process_and_skip_results_have_explicit_phase_and_status(self) -> None:

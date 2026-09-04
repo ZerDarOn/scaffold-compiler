@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
+    CandidateChangedError,
     CandidateFileRecord,
     calculate_candidate_digest,
 )
@@ -43,6 +44,26 @@ def successful_result() -> ControlledProcessResult:
 
 
 class V1ValidationExecutorTests(unittest.TestCase):
+    def test_validation_environment_inside_candidate_is_rejected_before_processes(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            uv = root / "uv.exe"
+            uv.write_bytes(b"")
+            candidate = make_candidate(root)
+
+            with self.assertRaisesRegex(ValueError, "outside the candidate"):
+                execute_v1_validation(
+                    candidate,
+                    "0" * 64,
+                    "1" * 64,
+                    ("pytest",),
+                    package_name="example",
+                    uv_executable=uv,
+                    validation_environment=candidate.root / ".venv",
+                    forbidden_absolute_paths=(root / "outside",),
+                    process_runner=lambda specification: successful_result(),
+                )
+
     def test_supported_code_gates_use_fixed_argument_arrays_and_can_issue_credential(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
@@ -61,7 +82,9 @@ class V1ValidationExecutorTests(unittest.TestCase):
                 "0" * 64,
                 "1" * 64,
                 required,
+                package_name="example",
                 uv_executable=uv,
+                validation_environment=root / "validation-env",
                 forbidden_absolute_paths=(root / "outside",),
                 process_runner=record,
             )
@@ -90,13 +113,15 @@ class V1ValidationExecutorTests(unittest.TestCase):
                 candidate,
                 "0" * 64,
                 "1" * 64,
-                ("application-start",),
+                ("postgres-connect",),
+                package_name="example",
                 uv_executable=uv,
+                validation_environment=root / "validation-env",
                 forbidden_absolute_paths=(root / "outside",),
                 process_runner=lambda specification: successful_result(),
             )
 
-            check = next(item for item in report.checks if item.name == "application-start")
+            check = next(item for item in report.checks if item.name == "postgres-connect")
             self.assertEqual(check.status, ValidationStatus.SKIPPED)
             self.assertTrue(check.required)
             with self.assertRaises(ValueError):
@@ -120,7 +145,9 @@ class V1ValidationExecutorTests(unittest.TestCase):
                 "0" * 64,
                 "1" * 64,
                 ("mypy", "pytest"),
+                package_name="example",
                 uv_executable=uv,
+                validation_environment=root / "validation-env",
                 forbidden_absolute_paths=(root / "outside",),
                 process_runner=fail_install,
             )
@@ -163,7 +190,9 @@ class V1ValidationExecutorTests(unittest.TestCase):
                 "0" * 64,
                 "1" * 64,
                 ("pytest",),
+                package_name="example",
                 uv_executable=uv,
+                validation_environment=root / "validation-env",
                 forbidden_absolute_paths=(root / "outside",),
                 process_runner=unexpected_process,
             )
@@ -172,6 +201,79 @@ class V1ValidationExecutorTests(unittest.TestCase):
             self.assertEqual(report.checks[0].status, ValidationStatus.FAIL)
             self.assertEqual(report.checks[1].status, ValidationStatus.SKIPPED)
             self.assertEqual(report.checks[2].status, ValidationStatus.SKIPPED)
+
+    def test_http_gates_use_fixed_code_and_pass_package_and_endpoint_as_data(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            uv = root / "uv.exe"
+            uv.write_bytes(b"")
+            candidate = make_candidate(root)
+            specifications: list[ControlledProcessSpec] = []
+
+            def record(specification: ControlledProcessSpec) -> ControlledProcessResult:
+                specifications.append(specification)
+                return successful_result()
+
+            required = ("application-start", "health-live", "health-ready", "openapi")
+            report = execute_v1_validation(
+                candidate,
+                "0" * 64,
+                "1" * 64,
+                required,
+                package_name="example",
+                uv_executable=uv,
+                validation_environment=root / "validation-env",
+                forbidden_absolute_paths=(root / "outside",),
+                process_runner=record,
+            )
+
+            runtime_specs = specifications[1:]
+            self.assertEqual(len(runtime_specs), 4)
+            self.assertTrue(
+                all(
+                    specification.argv[1:4] == ("run", "python", "-c")
+                    for specification in runtime_specs
+                )
+            )
+            self.assertTrue(
+                all(
+                    specification.environment
+                    == (("UV_PROJECT_ENVIRONMENT", str(root / "validation-env")),)
+                    for specification in specifications
+                )
+            )
+            self.assertTrue(
+                all(specification.argv[-2] == "example.asgi" for specification in runtime_specs)
+            )
+            self.assertEqual(
+                {specification.argv[-1] for specification in runtime_specs},
+                {"/api/v1", "/health/live", "/health/ready", "/openapi.json"},
+            )
+            issue_verification_credential(report, current_candidate_digest=candidate.digest)
+
+    def test_external_check_that_changes_candidate_cannot_produce_a_report(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            uv = root / "uv.exe"
+            uv.write_bytes(b"")
+            candidate = make_candidate(root)
+
+            def mutate_candidate(specification: ControlledProcessSpec) -> ControlledProcessResult:
+                (candidate.root / "unexpected.txt").write_text("changed\n", encoding="utf-8")
+                return successful_result()
+
+            with self.assertRaises(CandidateChangedError):
+                execute_v1_validation(
+                    candidate,
+                    "0" * 64,
+                    "1" * 64,
+                    ("pytest",),
+                    package_name="example",
+                    uv_executable=uv,
+                    validation_environment=root / "validation-env",
+                    forbidden_absolute_paths=(root / "outside",),
+                    process_runner=mutate_candidate,
+                )
 
 
 if __name__ == "__main__":
