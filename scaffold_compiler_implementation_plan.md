@@ -557,7 +557,7 @@ Xzt-vital/
 | 7.2 CLI 最小实现 | DONE | 薄 argparse 适配层只调用应用服务协议，不删除、不渲染、不执行 Shell；109 tests passed |
 | 7.3 一次性发布包失败测试 | DONE | 确定性、开发仓库、损坏/额外内容、竞态修改、失败重试与父进程退出均覆盖 |
 | 7.4 一次性发布包与安全回收 | DONE | 精确清单、W 中冻结 journal、真实 zipapp 外部监督、管道 EOF 和安全重试通过；121 tests passed |
-| 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；真实 M-01/M-03 的冻结安装、代码质量、HTTP、Alembic 与 PostgreSQL 门通过，Docker 与发布包入口待接入 |
+| 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；M-01 已从确定性发布胶囊完成真实生成、验证、Finalize 与自清理；M-03 的真实数据库门通过；M-02/M-04 Docker 与 M-03 发布胶囊链仍待验收 |
 | 8.2 安全与双平台验收 | NOT_STARTED | — |
 | 8.3 文档与发布候选验收 | NOT_STARTED | — |
 
@@ -871,7 +871,7 @@ Xzt-vital/
 ## 15. 当前状态快照
 
 - Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：生成器 134 tests passed、121 subtests passed；真实 M-01/M-03 的静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP 全部 PASS；M-03 另通过隔离 PostgreSQL 18、Alembic、SQL、数据库 readiness 和回滚；验证按副作用阶段排序，前置失败阻止迁移，且全部缓存/环境位于 W，候选摘要不变。
-- Next：为 Task 8.1 接入 Docker 运行时验证和发布包入口；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Tests：生成器 149 tests passed、126 subtests passed；确定性 `.pyz` 可在全新目录启动，M-01 已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；M-03 另通过隔离 PostgreSQL 18、Alembic、SQL、数据库 readiness 和回滚；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
+- Next：为 Task 8.1 完成 M-03 发布胶囊链，并接入 M-02/M-04 Docker 运行时验证；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。

@@ -253,6 +253,12 @@ class V1ValidationExecutorTests(unittest.TestCase):
                 )
             )
             self.assertTrue(
+                all(
+                    ("PYTHONDONTWRITEBYTECODE", "1") in specification.environment
+                    for specification in specifications
+                )
+            )
+            self.assertTrue(
                 all(specification.argv[-2] == "example.asgi" for specification in runtime_specs)
             )
             self.assertEqual(

@@ -31,8 +31,14 @@ LOGGER = logging.getLogger(__name__)
 _INSTALL_TIMEOUT_SECONDS: Final = 300.0
 _CHECK_TIMEOUT_SECONDS: Final = 180.0
 _OUTPUT_LIMIT_BYTES: Final = 65_536
+_PYTHON_SYNTAX_CODE: Final = """from pathlib import Path
+
+for root in (Path("src"), Path("tests")):
+    for path in sorted(root.rglob("*.py")):
+        compile(path.read_bytes(), path.as_posix(), "exec", dont_inherit=True)
+"""
 _CODE_VALIDATION_ARGUMENTS: Final = {
-    "python-syntax": ("run", "--no-sync", "python", "-m", "compileall", "-q", "src", "tests"),
+    "python-syntax": ("run", "--no-sync", "python", "-c", _PYTHON_SYNTAX_CODE),
     "ruff-format": ("run", "--no-sync", "ruff", "format", "--check", "."),
     "ruff-lint": ("run", "--no-sync", "ruff", "check", "."),
     "mypy": ("run", "--no-sync", "mypy"),
@@ -152,7 +158,7 @@ def execute_v1_validation(
     process_environment: tuple[tuple[str, str], ...] = (
         ("MYPY_CACHE_DIR", str(resolved_validation_environment / "mypy-cache")),
         ("PYTHONPATH", str(candidate.root / "src")),
-        ("PYTHONPYCACHEPREFIX", str(resolved_validation_environment / "pycache")),
+        ("PYTHONDONTWRITEBYTECODE", "1"),
         ("RUFF_CACHE_DIR", str(resolved_validation_environment / "ruff-cache")),
         ("UV_CACHE_DIR", str(resolved_validation_environment / "uv-cache")),
         ("UV_PROJECT_ENVIRONMENT", str(resolved_validation_environment / "venv")),
@@ -261,6 +267,14 @@ def execute_v1_validation(
             required=True,
             result=result,
         )
+        if check.status is ValidationStatus.FAIL:
+            LOGGER.error(
+                "v1_validation_gate_failed gate=%s return_code=%d stdout=%r stderr=%r",
+                name,
+                result.return_code,
+                result.stdout[-2000:],
+                result.stderr[-2000:],
+            )
         checks.append(check)
         if check.status is not ValidationStatus.PASS:
             phase_failed = True
