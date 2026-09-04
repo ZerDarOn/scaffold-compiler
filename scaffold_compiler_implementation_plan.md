@@ -559,7 +559,7 @@ Xzt-vital/
 | 7.4 一次性发布包与安全回收 | DONE | 精确清单、W 中冻结 journal、真实 zipapp 外部监督、管道 EOF 和安全重试通过；121 tests passed |
 | 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；M-01/M-03 均已从确定性发布胶囊完成真实生成、全门验证、Finalize 与自清理；M-03 另含隔离 PostgreSQL 启停和迁移；M-02/M-04 Docker 仍待验收 |
 | 8.2 安全与双平台验收 | NOT_STARTED | — |
-| 8.3 文档与发布候选验收 | NOT_STARTED | — |
+| 8.3 文档与发布候选验收 | IN_PROGRESS | README 已覆盖先决条件、四种选择、非交互运行、Finalize/自清理语义、PostgreSQL 秘密输入和当前 Docker/交互命令限制；Docker 文档命令与最终发布候选仍待验收 |
 
 ### Phase 0：建立可执行基线
 
