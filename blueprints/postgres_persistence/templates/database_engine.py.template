@@ -1,0 +1,23 @@
+"""Database engine construction and shutdown lifecycle."""
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+
+
+def create_database_engine(database_url: str) -> AsyncEngine:
+    return create_async_engine(database_url, pool_pre_ping=True)
+
+
+def database_lifespan(engine: AsyncEngine):
+    @asynccontextmanager
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+        application.state.database_engine = engine
+        try:
+            yield
+        finally:
+            await engine.dispose()
+
+    return lifespan

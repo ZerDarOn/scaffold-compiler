@@ -1,0 +1,10 @@
+"""Public application error type."""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class ApplicationError(Exception):
+    code: str
+    message: str
+    status_code: int = 400

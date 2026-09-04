@@ -1,0 +1,8 @@
+from ${package_name}.application import create_application
+
+
+def test_application_has_fixed_metadata_and_cors_is_disabled_by_default() -> None:
+    application = create_application()
+
+    assert application.title == "${project_name}"
+    assert len(application.user_middleware) == 1

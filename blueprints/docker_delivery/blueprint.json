@@ -1,0 +1,1 @@
+{"conflicts":[],"contributions":{},"files":[],"id":"docker-delivery","provides":["docker-delivery"],"requires":["fastapi-http-api"],"schema_version":1,"stage":"docker-delivery","validations":[],"variables":{},"version":"1.0.0"}

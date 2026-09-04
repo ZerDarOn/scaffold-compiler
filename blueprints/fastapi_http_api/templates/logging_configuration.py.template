@@ -1,0 +1,25 @@
+"""Minimal structured JSON logging configuration."""
+
+import json
+import logging
+from datetime import UTC, datetime
+
+from ${package_name}.observability.request_context_middleware import request_id_context
+
+
+class JsonLogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "request_id": request_id_context.get(),
+        }
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonLogFormatter())
+    logging.basicConfig(level=level, handlers=[handler], force=True)

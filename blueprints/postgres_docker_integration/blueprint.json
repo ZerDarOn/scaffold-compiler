@@ -1,0 +1,1 @@
+{"conflicts":[],"contributions":{},"files":[],"id":"postgres-docker-integration","provides":["postgres-docker-integration"],"requires":["docker-delivery","postgres-persistence"],"schema_version":1,"stage":"postgres-docker-integration","validations":[],"variables":{},"version":"1.0.0"}

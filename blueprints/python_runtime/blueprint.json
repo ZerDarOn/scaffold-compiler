@@ -1,0 +1,1 @@
+{"conflicts":[],"contributions":{},"files":[{"kind":"static","source":"static/python-version","target":".python-version"}],"id":"python-runtime","provides":["python-runtime"],"requires":["project-quality"],"schema_version":1,"stage":"python-runtime","validations":["python-syntax"],"variables":{},"version":"1.0.0"}

@@ -1,0 +1,29 @@
+"""One transaction-scoped SQLAlchemy session per request."""
+
+from collections.abc import AsyncIterator
+from typing import cast
+
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
+
+type AsyncSessionFactory = async_sessionmaker[AsyncSession]
+
+
+def create_session_factory(engine: AsyncEngine) -> AsyncSessionFactory:
+    return async_sessionmaker(engine, expire_on_commit=False)
+
+
+async def transaction_session(factory: AsyncSessionFactory) -> AsyncIterator[AsyncSession]:
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except BaseException:
+            await session.rollback()
+            raise
+
+
+async def database_session(request: Request) -> AsyncIterator[AsyncSession]:
+    factory = cast(AsyncSessionFactory, request.app.state.database_session_factory)
+    async for session in transaction_session(factory):
+        yield session

@@ -1,0 +1,36 @@
+"""Attach a bounded request identifier to responses and log context."""
+
+import re
+from contextvars import ContextVar
+from uuid import uuid4
+
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
+
+REQUEST_ID_HEADER = "x-request-id"
+_SAFE_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+request_id_context: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class RequestContextMiddleware:
+    def __init__(self, application: ASGIApp) -> None:
+        self.application = application
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.application(scope, receive, send)
+            return
+        headers = dict(scope.get("headers", []))
+        supplied = headers.get(REQUEST_ID_HEADER.encode(), b"").decode(errors="ignore")
+        request_id = supplied if _SAFE_REQUEST_ID.fullmatch(supplied) else uuid4().hex
+        token = request_id_context.set(request_id)
+
+        async def send_with_request_id(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                MutableHeaders(scope=message).append(REQUEST_ID_HEADER, request_id)
+            await send(message)
+
+        try:
+            await self.application(scope, receive, send_with_request_id)
+        finally:
+            request_id_context.reset(token)

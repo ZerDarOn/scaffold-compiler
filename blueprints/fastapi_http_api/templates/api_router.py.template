@@ -1,0 +1,10 @@
+"""Versioned API entrypoint."""
+
+from fastapi import APIRouter
+
+api_router = APIRouter()
+
+
+@api_router.get("", tags=["api"])
+async def api_information() -> dict[str, str]:
+    return {"name": "${project_name}", "version": "v1"}

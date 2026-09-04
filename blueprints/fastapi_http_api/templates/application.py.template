@@ -1,0 +1,55 @@
+"""FastAPI application construction and composition."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from ${package_name}.api.api_router import api_router
+from ${package_name}.api.health_routes import health_router
+from ${package_name}.configuration.application_settings import ApplicationSettings
+from ${package_name}.errors.http_exception_mapping import register_exception_handlers
+from ${package_name}.observability.request_context_middleware import RequestContextMiddleware
+
+type ReadinessProbe = Callable[[], Awaitable[bool]]
+type ApplicationLifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
+
+
+async def always_ready() -> bool:
+    return True
+
+
+@asynccontextmanager
+async def default_lifespan(_application: FastAPI) -> AsyncIterator[None]:
+    yield
+
+
+def create_application(
+    *,
+    settings: ApplicationSettings | None = None,
+    readiness_probe: ReadinessProbe = always_ready,
+    lifespan: ApplicationLifespan = default_lifespan,
+) -> FastAPI:
+    application_settings = settings or ApplicationSettings()
+    application = FastAPI(
+        title=application_settings.application_name,
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    application.state.readiness_probe = readiness_probe
+    application.add_middleware(RequestContextMiddleware)
+    if application_settings.cors_allowed_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=application_settings.cors_allowed_origins,
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    register_exception_handlers(application)
+    application.include_router(health_router)
+    application.include_router(api_router, prefix="/api/v1")
+    return application

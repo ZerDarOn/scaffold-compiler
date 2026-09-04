@@ -1,0 +1,1 @@
+"""Golden project acceptance specifications."""

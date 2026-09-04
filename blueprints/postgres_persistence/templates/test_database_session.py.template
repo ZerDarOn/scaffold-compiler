@@ -1,0 +1,52 @@
+import asyncio
+from typing import cast
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ${package_name}.persistence.database_session import (
+    AsyncSessionFactory,
+    transaction_session,
+)
+
+
+class FakeSession:
+    committed = False
+    rolled_back = False
+
+    async def __aenter__(self) -> "FakeSession":
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+    async def commit(self) -> None:
+        self.committed = True
+
+    async def rollback(self) -> None:
+        self.rolled_back = True
+
+
+class FakeFactory:
+    def __init__(self, session: FakeSession) -> None:
+        self.session = session
+
+    def __call__(self) -> FakeSession:
+        return self.session
+
+
+def test_transaction_rolls_back_when_request_work_fails() -> None:
+    session = FakeSession()
+
+    async def exercise() -> None:
+        factory = cast(AsyncSessionFactory, FakeFactory(session))
+        try:
+            async for yielded in transaction_session(factory):
+                assert cast(object, yielded) is cast(object, session)
+                raise RuntimeError("request failed")
+        except RuntimeError:
+            pass
+
+    asyncio.run(exercise())
+
+    assert session.rolled_back
+    assert not session.committed

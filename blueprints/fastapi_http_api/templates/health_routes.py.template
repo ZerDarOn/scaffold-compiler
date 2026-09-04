@@ -1,0 +1,29 @@
+"""Liveness and readiness endpoints."""
+
+from typing import Protocol, cast
+
+from fastapi import APIRouter, Request, status
+from fastapi.responses import JSONResponse
+
+
+class ReadinessProbe(Protocol):
+    async def __call__(self) -> bool: ...
+
+
+health_router = APIRouter(prefix="/health", tags=["health"])
+
+
+@health_router.get("/live")
+async def liveness() -> dict[str, str]:
+    return {"status": "alive"}
+
+
+@health_router.get("/ready", response_model=None)
+async def readiness(request: Request) -> dict[str, str] | JSONResponse:
+    probe = cast(ReadinessProbe, request.app.state.readiness_probe)
+    if await probe():
+        return {"status": "ready"}
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"status": "not_ready"},
+    )
