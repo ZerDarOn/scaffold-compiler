@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；一次性胶囊已收窄为 `preview / inspect / discard / run`，并完成失败工作区证据持久化、安全检查与可重试清理；Docker 验证已具备不暴露用户输入的资源身份、无 Shell 固定命令、所有权复核、健康轮询、无条件补偿和残留复核，并已接入 V1 验证器与发布入口；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：178 tests passed、151 subtests passed；M-01/M-03 均已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；失败验证链路已从胶囊完成证据检查与精确清理；M-03 另通过隔离 PostgreSQL 18 启停、Alembic、SQL、数据库 readiness 和回滚；Docker 资源命名、所有权标签、固定参数数组、Compose 临时密码脱敏、进程启动失败、同名资源竞态、健康判断及精确补偿清理已通过单元测试；合法长包名的生成导入已固定换行；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
-- Next：在可用 Docker 守护进程上执行 M-02/M-04 一次性胶囊端到端验收，验证真实镜像构建、非 root、容器健康、Compose 迁移/健康及零残留；通过前 Task 4.5 保持未完成。
+- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；一次性胶囊已收窄为 `preview / inspect / discard / run`，并完成失败工作区证据持久化、安全检查与可重试清理；Docker 验证已具备不暴露用户输入的资源身份、无 Shell 固定命令、所有权复核、健康轮询、无条件补偿和残留复核，并已接入 V1 验证器与发布入口；M-02 已具备真实胶囊验收入口和失败后精确测试补偿；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
+- Tests：178 tests passed、1 Docker acceptance skipped、151 subtests passed；M-01/M-03 均已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；M-02 因当前 Docker 守护进程不可用而明确跳过，未计为通过；失败验证链路已从胶囊完成证据检查与精确清理；M-03 另通过隔离 PostgreSQL 18 启停、Alembic、SQL、数据库 readiness 和回滚；Docker 资源命名、所有权标签、固定参数数组、Compose 临时密码脱敏、进程启动失败、同名资源竞态、健康判断及精确补偿清理已通过单元测试；合法长包名的生成导入已固定换行；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
+- Next：补充 M-04 的临时 PostgreSQL + Compose 真实胶囊验收入口；随后在可用 Docker 守护进程上执行 M-02/M-04，验证真实镜像构建、非 root、容器健康、Compose 迁移/健康及零残留；通过前 Task 4.5 保持未完成。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
