@@ -32,11 +32,11 @@ _INSTALL_TIMEOUT_SECONDS: Final = 300.0
 _CHECK_TIMEOUT_SECONDS: Final = 180.0
 _OUTPUT_LIMIT_BYTES: Final = 65_536
 _CODE_VALIDATION_ARGUMENTS: Final = {
-    "python-syntax": ("run", "python", "-m", "compileall", "-q", "src", "tests"),
-    "ruff-format": ("run", "ruff", "format", "--check", "."),
-    "ruff-lint": ("run", "ruff", "check", "."),
-    "mypy": ("run", "mypy"),
-    "pytest": ("run", "pytest"),
+    "python-syntax": ("run", "--no-sync", "python", "-m", "compileall", "-q", "src", "tests"),
+    "ruff-format": ("run", "--no-sync", "ruff", "format", "--check", "."),
+    "ruff-lint": ("run", "--no-sync", "ruff", "check", "."),
+    "mypy": ("run", "--no-sync", "mypy"),
+    "pytest": ("run", "--no-sync", "pytest", "-p", "no:cacheprovider"),
 }
 _HTTP_VALIDATION_PATHS: Final = {
     "application-start": "/api/v1",
@@ -57,7 +57,65 @@ with TestClient(application) as client:
     if sys.argv[2] == "/openapi.json" and not response.json().get("openapi"):
         raise SystemExit(1)
 """
+_POSTGRES_CONNECT_CODE: Final = """import asyncio
+import os
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+
+async def check() -> None:
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    try:
+        async with engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    finally:
+        await engine.dispose()
+
+asyncio.run(check())
+"""
+_DATABASE_READINESS_CODE: Final = """import asyncio
+import importlib
+import os
+import sys
+from sqlalchemy.ext.asyncio import create_async_engine
+
+module = importlib.import_module(sys.argv[1])
+engine = create_async_engine(os.environ["DATABASE_URL"])
+async def check() -> None:
+    try:
+        if not await module.database_is_ready(engine):
+            raise SystemExit(1)
+    finally:
+        await engine.dispose()
+asyncio.run(check())
+"""
 _PACKAGE_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9_]*$")
+_VALIDATION_ORDER: Final = {
+    name: index
+    for index, name in enumerate(
+        (
+            "python-syntax",
+            "ruff-format",
+            "ruff-lint",
+            "mypy",
+            "pytest",
+            "postgres-connect",
+            "alembic-upgrade",
+            "database-readiness",
+            "session-rollback",
+            "application-start",
+            "health-live",
+            "health-ready",
+            "openapi",
+            "docker-build",
+            "container-non-root",
+            "container-health",
+            "compose-config",
+            "compose-up",
+            "compose-health",
+            "compose-cleanup",
+        )
+    )
+}
 
 ValidationProcessRunner = Callable[[ControlledProcessSpec], ControlledProcessResult]
 
@@ -71,6 +129,7 @@ def execute_v1_validation(
     package_name: str,
     uv_executable: Path,
     validation_environment: Path,
+    database_url: str | None = None,
     forbidden_absolute_paths: tuple[Path, ...],
     secrets: tuple[str, ...] = (),
     process_runner: ValidationProcessRunner = run_controlled_process,
@@ -89,14 +148,27 @@ def execute_v1_validation(
         raise ValueError("Validation environment path must be a directory when it exists.")
     if not resolved_validation_environment.parent.is_dir():
         raise ValueError("Validation environment parent must already exist.")
-    process_environment = (("UV_PROJECT_ENVIRONMENT", str(resolved_validation_environment)),)
+    effective_secrets = secrets
+    process_environment: tuple[tuple[str, str], ...] = (
+        ("MYPY_CACHE_DIR", str(resolved_validation_environment / "mypy-cache")),
+        ("PYTHONPATH", str(candidate.root / "src")),
+        ("PYTHONPYCACHEPREFIX", str(resolved_validation_environment / "pycache")),
+        ("RUFF_CACHE_DIR", str(resolved_validation_environment / "ruff-cache")),
+        ("UV_CACHE_DIR", str(resolved_validation_environment / "uv-cache")),
+        ("UV_PROJECT_ENVIRONMENT", str(resolved_validation_environment / "venv")),
+    )
+    if database_url is not None:
+        if not database_url.startswith("postgresql+asyncpg://") or "\0" in database_url:
+            raise ValueError("Database URL is invalid for PostgreSQL validation.")
+        process_environment += (("DATABASE_URL", database_url),)
+        effective_secrets = tuple(dict.fromkeys((*secrets, database_url)))
     resolved_uv = uv_executable.resolve(strict=True)
     if not resolved_uv.is_file():
         raise ValueError("uv executable must be an existing ordinary file.")
     static_check = scan_candidate_static_safety(
         candidate,
         forbidden_absolute_paths=forbidden_absolute_paths,
-        secrets=secrets,
+        secrets=effective_secrets,
     )
     checks: list[ValidationCheck] = [static_check]
     LOGGER.info(
@@ -109,10 +181,10 @@ def execute_v1_validation(
             _process_specification(
                 "locked-install",
                 resolved_uv,
-                ("sync", "--frozen"),
+                ("sync", "--frozen", "--no-install-project"),
                 candidate.root,
                 _INSTALL_TIMEOUT_SECONDS,
-                secrets,
+                effective_secrets,
                 process_environment,
             )
         )
@@ -131,28 +203,46 @@ def execute_v1_validation(
         )
     checks.append(install_check)
 
-    for name in required_validations:
-        validation = _validation_command(name, package_name)
+    blocking_failure = install_check.status is not ValidationStatus.PASS
+    active_phase: ValidationPhase | None = None
+    phase_failed = False
+    for name in sorted(
+        required_validations, key=lambda item: (_VALIDATION_ORDER.get(item, 999), item)
+    ):
+        validation = _validation_command(
+            name,
+            package_name,
+            database_url=database_url,
+            database_required="postgres-connect" in required_validations,
+        )
+        phase = validation[1] if validation is not None else _phase_for_unavailable_check(name)
+        if active_phase is not phase:
+            if active_phase is not None and phase_failed:
+                blocking_failure = True
+            active_phase = phase
+            phase_failed = False
         if validation is None:
-            checks.append(
-                skipped_validation_check(
-                    name,
-                    _phase_for_unavailable_check(name),
-                    required=True,
-                    reason="This required runtime or delivery gate is not connected yet.",
-                )
-            )
-            continue
-        arguments, phase = validation
-        if install_check.status is not ValidationStatus.PASS:
             checks.append(
                 skipped_validation_check(
                     name,
                     phase,
                     required=True,
-                    reason="Locked dependency installation did not pass.",
+                    reason="This required runtime or delivery gate is not connected yet.",
                 )
             )
+            phase_failed = True
+            continue
+        arguments, phase = validation
+        if blocking_failure or (phase is ValidationPhase.RUNTIME and phase_failed):
+            checks.append(
+                skipped_validation_check(
+                    name,
+                    phase,
+                    required=True,
+                    reason="A prerequisite validation gate did not pass.",
+                )
+            )
+            phase_failed = True
             continue
         result = process_runner(
             _process_specification(
@@ -161,18 +251,19 @@ def execute_v1_validation(
                 arguments,
                 candidate.root,
                 _CHECK_TIMEOUT_SECONDS,
-                secrets,
+                effective_secrets,
                 process_environment,
             )
         )
-        checks.append(
-            check_from_process_result(
-                name,
-                phase,
-                required=True,
-                result=result,
-            )
+        check = check_from_process_result(
+            name,
+            phase,
+            required=True,
+            result=result,
         )
+        checks.append(check)
+        if check.status is not ValidationStatus.PASS:
+            phase_failed = True
 
     verify_candidate_digest(candidate)
     report = ValidationReport(
@@ -223,16 +314,62 @@ def _phase_for_unavailable_check(name: str) -> ValidationPhase:
 def _validation_command(
     name: str,
     package_name: str,
+    *,
+    database_url: str | None,
+    database_required: bool,
 ) -> tuple[tuple[str, ...], ValidationPhase] | None:
     code_arguments = _CODE_VALIDATION_ARGUMENTS.get(name)
     if code_arguments is not None:
         return code_arguments, ValidationPhase.QUALITY
     endpoint = _HTTP_VALIDATION_PATHS.get(name)
     if endpoint is not None:
+        if database_required and database_url is None:
+            return None
         return (
-            ("run", "python", "-c", _HTTP_CHECK_CODE, f"{package_name}.asgi", endpoint),
+            (
+                "run",
+                "--no-sync",
+                "python",
+                "-c",
+                _HTTP_CHECK_CODE,
+                f"{package_name}.asgi",
+                endpoint,
+            ),
             ValidationPhase.RUNTIME,
         )
+    if database_url is None:
+        return None
+    if name == "postgres-connect":
+        return (
+            "run",
+            "--no-sync",
+            "python",
+            "-c",
+            _POSTGRES_CONNECT_CODE,
+        ), ValidationPhase.RUNTIME
+    if name == "alembic-upgrade":
+        return ("run", "--no-sync", "alembic", "upgrade", "head"), ValidationPhase.RUNTIME
+    if name == "database-readiness":
+        return (
+            (
+                "run",
+                "--no-sync",
+                "python",
+                "-c",
+                _DATABASE_READINESS_CODE,
+                f"{package_name}.persistence.database_readiness",
+            ),
+            ValidationPhase.RUNTIME,
+        )
+    if name == "session-rollback":
+        return (
+            "run",
+            "--no-sync",
+            "pytest",
+            "-p",
+            "no:cacheprovider",
+            "tests/unit/test_database_session.py",
+        ), ValidationPhase.RUNTIME
     return None
 
 
