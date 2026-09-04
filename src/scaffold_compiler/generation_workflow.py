@@ -57,7 +57,7 @@ class CompletedGeneration:
 
 
 CandidateValidator = Callable[
-    [CandidateAssemblyResult, str, str],
+    [CandidateAssemblyResult, str, str, tuple[str, ...]],
     ValidationReport,
 ]
 
@@ -125,11 +125,13 @@ def execute_non_interactive_generation(
 
         session = transition_session(session, SessionEvent.VERIFY_REQUESTED)
         store.save(session)
+        required_validations = _required_validation_names(catalog, plan.blueprint_ids)
         try:
             report = validator(
                 candidate,
                 configuration.configuration_digest,
                 blueprint_digest,
+                required_validations,
             )
             if (
                 report.configuration_digest != configuration.configuration_digest
@@ -138,6 +140,14 @@ def execute_non_interactive_generation(
                 or report.candidate_digest != candidate.digest
             ):
                 raise GenerationWorkflowError("Validator report does not bind this generation run.")
+            checks_by_name = {check.name: check for check in report.checks}
+            if any(
+                name not in checks_by_name or not checks_by_name[name].required
+                for name in required_validations
+            ):
+                raise GenerationWorkflowError(
+                    "Validator report omits a required blueprint validation."
+                )
             credential = issue_verification_credential(
                 report,
                 current_candidate_digest=candidate.digest,
@@ -239,3 +249,19 @@ def _selected_blueprint_digest(
         )
     payload = json.dumps(records, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def _required_validation_names(
+    catalog: BlueprintCatalog,
+    blueprint_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    selected = {manifest.blueprint_id: manifest for manifest in catalog.manifests}
+    return tuple(
+        sorted(
+            {
+                validation
+                for blueprint_id in blueprint_ids
+                for validation in selected[blueprint_id].validations
+            }
+        )
+    )

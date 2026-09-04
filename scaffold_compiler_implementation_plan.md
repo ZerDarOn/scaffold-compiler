@@ -557,7 +557,7 @@ Xzt-vital/
 | 7.2 CLI 最小实现 | DONE | 薄 argparse 适配层只调用应用服务协议，不删除、不渲染、不执行 Shell；109 tests passed |
 | 7.3 一次性发布包失败测试 | DONE | 确定性、开发仓库、损坏/额外内容、竞态修改、失败重试与父进程退出均覆盖 |
 | 7.4 一次性发布包与安全回收 | DONE | 精确清单、W 中冻结 journal、真实 zipapp 外部监督、管道 EOF 和安全重试通过；121 tests passed |
-| 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合已通过锁、journal、规划、物化、摘要绑定、原生发布与回收；真实验证器及发布包入口待接入 |
+| 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；验证器已强制完整蓝图门并接通冻结安装/代码质量，运行时、数据库、Docker 与发布包入口待接入 |
 | 8.2 安全与双平台验收 | NOT_STARTED | — |
 | 8.3 文档与发布候选验收 | NOT_STARTED | — |
 
@@ -871,7 +871,7 @@ Xzt-vital/
 ## 15. 当前状态快照
 
 - Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：生成器 123 tests passed、120 subtests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过；四组合事务链与 W 中冻结 journal 驱动的真实 zipapp 回收通过。
-- Next：为 Task 8.1 接入真实验证执行器和发布包入口；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Tests：生成器 127 tests passed、121 subtests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；验证器缺门/错摘要/静态失败均拒绝发布；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过；四组合事务链与真实 zipapp 回收通过。
+- Next：为 Task 8.1 接入 HTTP/PostgreSQL/Docker 运行时验证和发布包入口；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。

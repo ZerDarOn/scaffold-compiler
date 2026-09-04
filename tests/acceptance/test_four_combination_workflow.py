@@ -15,7 +15,12 @@ from scaffold_compiler.session_state_store import (
     SessionState,
     SessionStateStore,
 )
-from scaffold_compiler.validation import ValidationReport, scan_candidate_static_safety
+from scaffold_compiler.validation import (
+    ValidationCheck,
+    ValidationReport,
+    ValidationStatus,
+    scan_candidate_static_safety,
+)
 from tests.golden_projects.project_specifications import GOLDEN_PROJECT_SPECIFICATIONS
 
 
@@ -80,11 +85,13 @@ class FourCombinationWorkflowTests(unittest.TestCase):
                 candidate: CandidateAssemblyResult,
                 configuration_digest: str,
                 blueprint_digest: str,
+                required_validations: tuple[str, ...],
             ) -> ValidationReport:
                 report = self.validate_acceptance_candidate(
                     candidate,
                     configuration_digest,
                     blueprint_digest,
+                    required_validations,
                 )
                 return ValidationReport(
                     configuration_digest="0" * 64,
@@ -114,6 +121,7 @@ class FourCombinationWorkflowTests(unittest.TestCase):
         candidate: CandidateAssemblyResult,
         configuration_digest: str,
         blueprint_digest: str,
+        required_validations: tuple[str, ...],
     ) -> ValidationReport:
         return ValidationReport(
             configuration_digest=configuration_digest,
@@ -125,6 +133,10 @@ class FourCombinationWorkflowTests(unittest.TestCase):
                     candidate,
                     forbidden_absolute_paths=(candidate.root.parent,),
                     secrets=(),
+                ),
+                *(
+                    ValidationCheck(name, ValidationStatus.PASS, required=True)
+                    for name in required_validations
                 ),
             ),
         )
