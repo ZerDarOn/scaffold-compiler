@@ -550,9 +550,9 @@ Xzt-vital/
 | 4.5 Docker 与组合适配蓝图 | IN_PROGRESS | M-02/M-04 冻结安装、Ruff、mypy、tests 与 Compose config 通过；镜像/容器验收等待 Docker 守护进程 |
 | 5.1 验证器与进程控制失败测试 | DONE | 超时树终止、非零退出、输出限制、跨边界脱敏、静态扫描、状态与凭证绑定均覆盖 |
 | 5.2 验证器与进程控制最小实现 | DONE | 受控无 Shell 进程、阶段化报告、静态安全扫描与不可伪造摘要绑定；80 tests passed |
-| 6.1 Finalize 与恢复失败测试 | NOT_STARTED | — |
-| 6.2 Finalize 与恢复最小实现 | NOT_STARTED | — |
-| 6.3 故障注入与幂等修正 | NOT_STARTED | — |
+| 6.1 Finalize 与恢复失败测试 | IN_PROGRESS | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁与清理已覆盖；事务 journal 边界待补 |
+| 6.2 Finalize 与恢复最小实现 | IN_PROGRESS | 隐藏只读快照、Windows/Linux no-replace、发布后复核、恢复分类、目标锁和精确候选清理已实现 |
+| 6.3 故障注入与幂等修正 | IN_PROGRESS | 复制四边界、移动后篡改、重复恢复和部分清理重试通过；持久化边界注入待补 |
 | 7.1 CLI 行为失败测试 | NOT_STARTED | — |
 | 7.2 CLI 最小实现 | NOT_STARTED | — |
 | 7.3 一次性发布包失败测试 | NOT_STARTED | — |
@@ -872,6 +872,6 @@ Xzt-vital/
 
 - Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phase 5；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
 - Tests：生成器 80 tests passed；四组合均通过 Python 3.14 冻结安装、Ruff、mypy 和项目测试；M-01 Uvicorn health、M-03 隔离 PostgreSQL/Alembic/SQL/HTTP readiness、M-04 Compose config 通过。
-- Next：Task 6.1——Finalize 与恢复失败测试；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
+- Next：继续 Tasks 6.1–6.3——补事务 journal 的意图/结果持久化边界和重启恢复；Task 4.5 的真实镜像/容器门等待 Docker 守护进程可用。
 - Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
