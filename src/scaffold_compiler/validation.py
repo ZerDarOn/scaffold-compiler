@@ -29,6 +29,7 @@ _DIGEST_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 _CHECK_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9-]*$")
 _ENVIRONMENT_NAME_PATTERN: Final = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 _TRUNCATION_MARKER: Final = "\n[output truncated]"
+_ALLOWED_RUNTIME_PLACEHOLDERS: Final = ("${APPLICATION_PORT:-8000}",)
 
 
 class ValidationStatus(StrEnum):
@@ -320,7 +321,7 @@ def scan_candidate_static_safety(
                 text = content.decode("utf-8")
             except UnicodeDecodeError:
                 continue
-            if "${" in text:
+            if _contains_unresolved_generation_placeholder(text):
                 return ValidationCheck(
                     "static-safety",
                     ValidationStatus.FAIL,
@@ -350,6 +351,13 @@ def scan_candidate_static_safety(
             diagnostics="Candidate bytes changed during static validation.",
         )
     return ValidationCheck("static-safety", ValidationStatus.PASS, required=True)
+
+
+def _contains_unresolved_generation_placeholder(text: str) -> bool:
+    remaining = text
+    for allowed in _ALLOWED_RUNTIME_PLACEHOLDERS:
+        remaining = remaining.replace(allowed, "")
+    return "${" in remaining
 
 
 def issue_verification_credential(

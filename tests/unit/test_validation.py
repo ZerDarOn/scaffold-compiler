@@ -275,6 +275,25 @@ class StaticSafetyScanTests(unittest.TestCase):
             self.assertIs(check.status, ValidationStatus.PASS)
             verify_candidate_digest(result)
 
+    def test_only_the_fixed_compose_runtime_placeholder_is_allowed(self) -> None:
+        cases = (
+            ('ports: ["${APPLICATION_PORT:-8000}:8000"]', ValidationStatus.PASS),
+            ('ports: ["${APPLICATION_PORT:-9000}:8000"]', ValidationStatus.FAIL),
+            ('ports: ["${APPLICATION_PORT}:8000"]', ValidationStatus.FAIL),
+        )
+
+        for content, expected_status in cases:
+            with self.subTest(content=content), TemporaryDirectory() as directory:
+                result = self.assemble_candidate(Path(directory), content)
+
+                check = scan_candidate_static_safety(
+                    result,
+                    forbidden_absolute_paths=(Path("C:/generator/workspace"),),
+                    secrets=("private-token",),
+                )
+
+                self.assertIs(check.status, expected_status)
+
 
 if __name__ == "__main__":
     unittest.main()

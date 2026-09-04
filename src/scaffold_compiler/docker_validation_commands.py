@@ -228,7 +228,10 @@ class DockerValidationCommands:
             ),
             timeout_seconds=timeout_seconds,
             secrets=(self._compose_password,),
-            environment=(("POSTGRES_PASSWORD", self._compose_password),),
+            environment=(
+                ("APPLICATION_PORT", "0"),
+                ("POSTGRES_PASSWORD", self._compose_password),
+            ),
         )
 
     def _specification(

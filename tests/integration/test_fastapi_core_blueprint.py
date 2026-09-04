@@ -184,6 +184,11 @@ class FastApiCoreBlueprintTests(unittest.TestCase):
             self.assertIn("condition: service_completed_successfully", compose)
             self.assertIn('command: ["alembic", "upgrade", "head"]', compose)
             self.assertIn("POSTGRES_PASSWORD", compose)
+            self.assertIn("${APPLICATION_PORT:-8000}:8000", compose)
+            self.assertIn(
+                "APPLICATION_PORT=8000",
+                (result.root / ".env.example").read_text(encoding="utf-8"),
+            )
             self.assertNotIn("change-me", compose)
             self.assertNotIn("postgres_docker_integration", compose)
 

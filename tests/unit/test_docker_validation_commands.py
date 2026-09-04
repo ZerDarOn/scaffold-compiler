@@ -75,6 +75,7 @@ class DockerValidationCommandsTests(unittest.TestCase):
                     "--file",
                 ))
                 self.assertIn(("POSTGRES_PASSWORD", "temporary-secret"), specification.environment)
+                self.assertIn(("APPLICATION_PORT", "0"), specification.environment)
                 self.assertIn("temporary-secret", specification.secrets)
             self.assertIn("--wait", commands.compose_up().argv)
             self.assertEqual(
