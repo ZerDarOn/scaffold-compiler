@@ -11,10 +11,7 @@ from scaffold_compiler.capsule_package import build_capsule_package
 from scaffold_compiler.path_safety import resolve_safe_output_path
 
 _ZIP_TIMESTAMP: Final = (1980, 1, 1, 0, 0, 0)
-_ROOT_ENTRY = (
-    b"from scaffold_compiler.release_entry import main\n"
-    b"raise SystemExit(main())\n"
-)
+_ROOT_ENTRY = b"from scaffold_compiler.release_entry import main\nraise SystemExit(main())\n"
 
 
 def build_disposable_release(

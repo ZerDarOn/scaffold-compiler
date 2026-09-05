@@ -94,9 +94,7 @@ class V1CommandApplicationTests(unittest.TestCase):
                 working_directory=root,
                 home_directory=root / "home",
                 uv_executable=uv_executable,
-                environment={
-                    "DATABASE_URL": "postgresql+asyncpg://user:secret@localhost/example"
-                },
+                environment={"DATABASE_URL": "postgresql+asyncpg://user:secret@localhost/example"},
                 generation_runner=cast(GenerationRunner, generation_runner),
                 run_id_factory=lambda: "release-run",
             )

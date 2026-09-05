@@ -68,12 +68,15 @@ class DockerValidationCommandsTests(unittest.TestCase):
             )
 
             for specification in specifications:
-                self.assertEqual(specification.argv[1:5], (
-                    "compose",
-                    "--project-name",
-                    resources.compose_project,
-                    "--file",
-                ))
+                self.assertEqual(
+                    specification.argv[1:5],
+                    (
+                        "compose",
+                        "--project-name",
+                        resources.compose_project,
+                        "--file",
+                    ),
+                )
                 self.assertIn(("POSTGRES_PASSWORD", "temporary-secret"), specification.environment)
                 self.assertIn(("APPLICATION_PORT", "0"), specification.environment)
                 self.assertIn("temporary-secret", specification.secrets)

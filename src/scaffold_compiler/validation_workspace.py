@@ -51,12 +51,15 @@ def prepare_validation_workspace(workspace: Path, *, run_id: str) -> ValidationW
     try:
         root.mkdir()
         marker = root / _MARKER_NAME
-        payload = json.dumps(
-            {"run_id": run_id, "schema_version": _SCHEMA_VERSION},
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ) + "\n"
+        payload = (
+            json.dumps(
+                {"run_id": run_id, "schema_version": _SCHEMA_VERSION},
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            + "\n"
+        )
         with marker.open("x", encoding="utf-8", newline="\n") as marker_file:
             marker_file.write(payload)
             marker_file.flush()

@@ -58,9 +58,7 @@ class DockerDisposableReleaseWorkflowTests(unittest.TestCase):
     def test_m02_runs_from_capsule_and_leaves_no_owned_docker_resources(self) -> None:
         assert DOCKER_EXECUTABLE is not None
         repository = Path(__file__).parents[2]
-        uv_executable = Path(sys.executable).with_name(
-            "uv.exe" if os.name == "nt" else "uv"
-        )
+        uv_executable = Path(sys.executable).with_name("uv.exe" if os.name == "nt" else "uv")
         self.assertTrue(uv_executable.is_file(), "project environment must contain uv")
         before = _snapshot(DOCKER_EXECUTABLE)
 
@@ -131,9 +129,7 @@ class DockerDisposableReleaseWorkflowTests(unittest.TestCase):
     def test_m04_runs_postgres_compose_from_capsule_with_zero_resource_delta(self) -> None:
         assert DOCKER_EXECUTABLE is not None
         repository = Path(__file__).parents[2]
-        uv_executable = Path(sys.executable).with_name(
-            "uv.exe" if os.name == "nt" else "uv"
-        )
+        uv_executable = Path(sys.executable).with_name("uv.exe" if os.name == "nt" else "uv")
         self.assertTrue(uv_executable.is_file(), "project environment must contain uv")
 
         with _auxiliary_postgres(DOCKER_EXECUTABLE) as database_url:
@@ -192,10 +188,7 @@ class DockerDisposableReleaseWorkflowTests(unittest.TestCase):
                     )
                     self.assertTrue((target / "compose.yaml").is_file())
                     self.assertTrue((target / "migrations" / "env.py").is_file())
-                    cleanup_root = (
-                        root
-                        / f".scaffold-capsule-cleanup-{POSTGRES_COMPOSE_CAPSULE_ID}"
-                    )
+                    cleanup_root = root / f".scaffold-capsule-cleanup-{POSTGRES_COMPOSE_CAPSULE_ID}"
                     deadline = time.monotonic() + 15
                     while (
                         capsule.exists() or cleanup_root.exists()
@@ -352,10 +345,7 @@ def _auxiliary_postgres(docker: Path) -> Iterator[str]:
     try:
         port = _published_postgres_port(docker, name)
         _wait_for_postgres(docker, name)
-        yield (
-            f"postgresql+asyncpg://application:{password}"
-            f"@127.0.0.1:{port}/application"
-        )
+        yield (f"postgresql+asyncpg://application:{password}@127.0.0.1:{port}/application")
     finally:
         _remove_auxiliary_postgres(docker, name, identity)
 

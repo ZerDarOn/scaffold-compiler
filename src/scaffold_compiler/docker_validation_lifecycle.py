@@ -55,6 +55,7 @@ def execute_docker_validation_lifecycle(
 
     def safe_runner(specification: ControlledProcessSpec) -> ControlledProcessResult:
         return _run_safely(process_runner, specification)
+
     LOGGER.info(
         "docker_validation_started validation_id=%s required=%d",
         commands.validation_id,
@@ -317,9 +318,7 @@ def _resources_absent(
 
 def _owned_resource(result: ControlledProcessResult, validation_id: str) -> bool:
     return (
-        result.return_code == 0
-        and not result.timed_out
-        and result.stdout.strip() == validation_id
+        result.return_code == 0 and not result.timed_out and result.stdout.strip() == validation_id
     )
 
 

@@ -46,9 +46,7 @@ _ALLOWED_ROOT_ENTRIES: Final = frozenset(
         "validation_report.json",
     }
 )
-_DISCARDABLE_STATES: Final = frozenset(
-    {SessionState.FAILED_RETRYABLE, SessionState.CANCELLED}
-)
+_DISCARDABLE_STATES: Final = frozenset({SessionState.FAILED_RETRYABLE, SessionState.CANCELLED})
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,9 +140,7 @@ def discard_failed_workspace(workspace: Path) -> FailedWorkspaceDiscardResult:
     if not validation_cleanup.completed:
         return _refuse(session, "Validation workspace cleanup is incomplete.")
 
-    ownership_store = CandidateOwnershipStore(
-        trusted_workspace / "candidate_ownership.json"
-    )
+    ownership_store = CandidateOwnershipStore(trusted_workspace / "candidate_ownership.json")
     report_store = ValidationReportStore(trusted_workspace / "validation_report.json")
     try:
         report_store.path.unlink(missing_ok=True)
@@ -170,10 +166,9 @@ def _load_workspace_session(workspace: Path) -> tuple[Path, GenerationSession]:
         raise ValueError("Session evidence cannot be linked or reparsed.")
     session = SessionStateStore(session_path).load()
     expected_suffix = f".scaffold-{session.run_id}"
-    if (
-        not _WORKSPACE_PREFIX_PATTERN.match(trusted_workspace.name)
-        or not trusted_workspace.name.endswith(expected_suffix)
-    ):
+    if not _WORKSPACE_PREFIX_PATTERN.match(
+        trusted_workspace.name
+    ) or not trusted_workspace.name.endswith(expected_suffix):
         raise ValueError("Workspace name does not bind the session run ID.")
     return trusted_workspace, session
 

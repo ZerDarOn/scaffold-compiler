@@ -46,12 +46,15 @@ class CandidateOwnershipStore:
             "plan_digest": candidate.plan_digest,
             "schema_version": _SCHEMA_VERSION,
         }
-        serialized = json.dumps(
-            payload,
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        ) + "\n"
+        serialized = (
+            json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            + "\n"
+        )
         temporary = self.path.with_name(f"{self.path.name}.{uuid.uuid4().hex}.tmp")
         try:
             with temporary.open("x", encoding="utf-8", newline="\n") as output:

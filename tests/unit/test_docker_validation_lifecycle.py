@@ -99,9 +99,7 @@ class DockerValidationLifecycleTests(unittest.TestCase):
 
     def test_preexisting_resource_refuses_all_mutating_commands(self) -> None:
         with TemporaryDirectory() as directory:
-            runner = RecordingRunner(
-                {"docker-image-preflight": [result(stdout="image-id\n")]}
-            )
+            runner = RecordingRunner({"docker-image-preflight": [result(stdout="image-id\n")]})
 
             checks = execute_docker_validation_lifecycle(
                 commands(Path(directory)),

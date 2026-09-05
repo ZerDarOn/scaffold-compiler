@@ -135,9 +135,7 @@ class ReleaseEntryTests(unittest.TestCase):
                 docker.resolve(),
             )
             self.assertIsNone(
-                resolve_docker_executable(
-                    {"SCAFFOLD_COMPILER_DOCKER": str(root / "missing")}
-                )
+                resolve_docker_executable({"SCAFFOLD_COMPILER_DOCKER": str(root / "missing")})
             )
 
     def test_executable_resolution_uses_the_selected_environment_path(self) -> None:

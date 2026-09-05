@@ -17,9 +17,7 @@ CAPSULE_ID = "12345678-1234-4678-9234-567812345678"
 class DisposableReleaseWorkflowTests(unittest.TestCase):
     def test_m01_runs_from_capsule_then_removes_generator_and_journal(self) -> None:
         repository = Path(__file__).parents[2]
-        uv_executable = Path(sys.executable).with_name(
-            "uv.exe" if os.name == "nt" else "uv"
-        )
+        uv_executable = Path(sys.executable).with_name("uv.exe" if os.name == "nt" else "uv")
         self.assertTrue(uv_executable.is_file(), "project environment must contain uv")
         with TemporaryDirectory() as directory:
             root = Path(directory)

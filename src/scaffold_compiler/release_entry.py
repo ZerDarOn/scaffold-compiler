@@ -60,9 +60,7 @@ def main(
     if selected_application is None:
         requires_uv = selected_arguments[:1] == ["run"]
         uv_executable = resolve_uv_executable(selected_environment) if requires_uv else None
-        docker_executable = (
-            resolve_docker_executable(selected_environment) if requires_uv else None
-        )
+        docker_executable = resolve_docker_executable(selected_environment) if requires_uv else None
         if requires_uv and uv_executable is None:
             selected_stderr.write(
                 "uv was not found; set SCAFFOLD_COMPILER_UV to an existing executable.\n"
@@ -121,9 +119,7 @@ def _resolve_external_executable(
     command_name: str,
 ) -> Path | None:
     explicit = environment.get(setting_name)
-    found = (
-        shutil.which(command_name, path=environment.get("PATH")) if not explicit else None
-    )
+    found = shutil.which(command_name, path=environment.get("PATH")) if not explicit else None
     candidate = Path(explicit) if explicit else Path(found) if found else None
     if candidate is None:
         return None

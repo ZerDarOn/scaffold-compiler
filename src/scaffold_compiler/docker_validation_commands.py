@@ -202,10 +202,7 @@ class DockerValidationCommands:
 
     @property
     def _ownership_label(self) -> str:
-        return (
-            f"{self._resources.ownership_label_name}="
-            f"{self._resources.ownership_label_value}"
-        )
+        return f"{self._resources.ownership_label_name}={self._resources.ownership_label_value}"
 
     def _compose_specification(
         self,
