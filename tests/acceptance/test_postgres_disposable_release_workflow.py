@@ -8,8 +8,11 @@ import subprocess
 import sys
 import time
 import unittest
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from scaffold_compiler.disposable_release_builder import build_disposable_release
 
@@ -35,69 +38,24 @@ def _postgres_binary_directory() -> Path | None:
 
 
 POSTGRES_BIN = _postgres_binary_directory()
+EXTERNAL_DATABASE_URL = os.environ.get("SCAFFOLD_TEST_DATABASE_URL")
+POSTGRES_ENVIRONMENT_AVAILABLE = POSTGRES_BIN is not None or EXTERNAL_DATABASE_URL is not None
 
 
-@unittest.skipUnless(POSTGRES_BIN is not None, "isolated PostgreSQL binaries are unavailable")
+@unittest.skipUnless(
+    POSTGRES_ENVIRONMENT_AVAILABLE,
+    "isolated PostgreSQL binaries or an explicit test database are unavailable",
+)
 class PostgresDisposableReleaseWorkflowTests(unittest.TestCase):
     def test_m03_runs_from_capsule_against_an_isolated_postgres_cluster(self) -> None:
-        assert POSTGRES_BIN is not None
         repository = Path(__file__).parents[2]
         suffix = ".exe" if os.name == "nt" else ""
-        initdb = POSTGRES_BIN / f"initdb{suffix}"
-        pg_ctl = POSTGRES_BIN / f"pg_ctl{suffix}"
         uv_executable = Path(sys.executable).with_name(f"uv{suffix}")
         self.assertTrue(uv_executable.is_file(), "project environment must contain uv")
 
         with TemporaryDirectory() as directory:
             root = Path(directory)
-            data_directory = root / "postgres-data"
-            initialized = subprocess.run(
-                (
-                    str(initdb),
-                    "--pgdata",
-                    str(data_directory),
-                    "--username",
-                    "postgres",
-                    "--auth",
-                    "trust",
-                    "--encoding",
-                    "UTF8",
-                    "--no-locale",
-                ),
-                capture_output=True,
-                check=False,
-                text=True,
-                timeout=60,
-            )
-            self.assertEqual(initialized.returncode, 0, initialized.stderr)
-            port = _reserve_local_port()
-            started = False
-            try:
-                start = subprocess.run(
-                    (
-                        str(pg_ctl),
-                        "--pgdata",
-                        str(data_directory),
-                        "--log",
-                        str(root / "postgres.log"),
-                        "--options",
-                        f"-h 127.0.0.1 -p {port}",
-                        "--wait",
-                        "--timeout",
-                        "60",
-                        "start",
-                    ),
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    check=False,
-                    timeout=70,
-                )
-                self.assertEqual(
-                    start.returncode,
-                    0,
-                    (root / "postgres.log").read_text(encoding="utf-8", errors="replace"),
-                )
-                started = True
+            with _database_url(root) as database_url:
                 capsule = build_disposable_release(
                     repository,
                     root / "capsule",
@@ -119,10 +77,9 @@ class PostgresDisposableReleaseWorkflowTests(unittest.TestCase):
                     encoding="utf-8",
                 )
                 environment = os.environ.copy()
+                environment.pop("SCAFFOLD_TEST_DATABASE_URL", None)
                 environment["SCAFFOLD_COMPILER_UV"] = str(uv_executable)
-                environment["DATABASE_URL"] = (
-                    f"postgresql+asyncpg://postgres@127.0.0.1:{port}/postgres"
-                )
+                environment["DATABASE_URL"] = database_url
 
                 completed = subprocess.run(
                     (
@@ -154,26 +111,98 @@ class PostgresDisposableReleaseWorkflowTests(unittest.TestCase):
                     time.sleep(0.05)
                 self.assertFalse(capsule.exists(), "disposable generator was not removed")
                 self.assertFalse(cleanup_root.exists(), "cleanup journal was not removed")
-            finally:
-                if started:
-                    stopped = subprocess.run(
-                        (
-                            str(pg_ctl),
-                            "--pgdata",
-                            str(data_directory),
-                            "--wait",
-                            "--timeout",
-                            "60",
-                            "stop",
-                            "--mode",
-                            "fast",
-                        ),
-                        capture_output=True,
-                        check=False,
-                        text=True,
-                        timeout=70,
-                    )
-                    self.assertEqual(stopped.returncode, 0, stopped.stderr)
+
+
+class DatabaseUrlSelectionTests(unittest.TestCase):
+    def test_explicit_test_database_avoids_host_binary_lifecycle(self) -> None:
+        database_url = "postgresql+asyncpg://test:test@127.0.0.1:5432/test"
+        with (
+            TemporaryDirectory() as directory,
+            patch(
+                "tests.acceptance.test_postgres_disposable_release_workflow.EXTERNAL_DATABASE_URL",
+                database_url,
+            ),
+            _database_url(Path(directory)) as selected,
+        ):
+            self.assertEqual(selected, database_url)
+
+
+@contextmanager
+def _database_url(root: Path) -> Iterator[str]:
+    if EXTERNAL_DATABASE_URL is not None:
+        yield EXTERNAL_DATABASE_URL
+        return
+
+    assert POSTGRES_BIN is not None
+    suffix = ".exe" if os.name == "nt" else ""
+    initdb = POSTGRES_BIN / f"initdb{suffix}"
+    pg_ctl = POSTGRES_BIN / f"pg_ctl{suffix}"
+    data_directory = root / "postgres-data"
+    initialized = subprocess.run(
+        (
+            str(initdb),
+            "--pgdata",
+            str(data_directory),
+            "--username",
+            "postgres",
+            "--auth",
+            "trust",
+            "--encoding",
+            "UTF8",
+            "--no-locale",
+        ),
+        capture_output=True,
+        check=False,
+        text=True,
+        timeout=60,
+    )
+    if initialized.returncode != 0:
+        raise AssertionError(initialized.stderr)
+
+    port = _reserve_local_port()
+    started = subprocess.run(
+        (
+            str(pg_ctl),
+            "--pgdata",
+            str(data_directory),
+            "--log",
+            str(root / "postgres.log"),
+            "--options",
+            f"-h 127.0.0.1 -p {port}",
+            "--wait",
+            "--timeout",
+            "60",
+            "start",
+        ),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+        timeout=70,
+    )
+    if started.returncode != 0:
+        raise AssertionError((root / "postgres.log").read_text(encoding="utf-8", errors="replace"))
+    try:
+        yield f"postgresql+asyncpg://postgres@127.0.0.1:{port}/postgres"
+    finally:
+        stopped = subprocess.run(
+            (
+                str(pg_ctl),
+                "--pgdata",
+                str(data_directory),
+                "--wait",
+                "--timeout",
+                "60",
+                "stop",
+                "--mode",
+                "fast",
+            ),
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=70,
+        )
+        if stopped.returncode != 0:
+            raise AssertionError(stopped.stderr)
 
 
 def _reserve_local_port() -> int:

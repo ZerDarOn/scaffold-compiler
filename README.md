@@ -11,8 +11,8 @@ V1 deliberately supports only four combinations:
 |---|---|---|
 | None | Local | Runtime-verified |
 | PostgreSQL | Local | Runtime-verified |
-| None | Docker | Blueprint complete; real Docker gate pending |
-| PostgreSQL | Docker Compose | Blueprint complete; real Docker gate pending |
+| None | Docker | Real acceptance implemented; first CI pass pending |
+| PostgreSQL | Docker Compose | Real acceptance implemented; first CI pass pending |
 
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
@@ -24,8 +24,8 @@ The detailed architecture, guarantees, and remaining acceptance work are in
 - For PostgreSQL projects, a disposable PostgreSQL database and a
   `postgresql+asyncpg://...` URL in `DATABASE_URL`.
 - For Docker choices, a Docker CLI and running engine. The CLI may be supplied by absolute path in
-  `SCAFFOLD_COMPILER_DOCKER`. Real M-02/M-04 acceptance is still pending in this repository; an
-  unavailable engine or incomplete cleanup causes generation to fail safely.
+  `SCAFFOLD_COMPILER_DOCKER`. M-02/M-04 acceptance builds and runs real containers; an unavailable
+  engine or incomplete cleanup causes generation to fail safely.
 
 ## Run a release capsule
 
@@ -123,6 +123,11 @@ $env:UV_CACHE_DIR = "$PWD\.uv-cache"
 .venv\Scripts\uv run mypy
 .venv\Scripts\uv run pytest
 ```
+
+The repository workflow runs formatting, lint, typing, and core tests on both Windows and Linux. A
+separate Linux release job requires a working Docker engine and Compose, provisions an isolated
+PostgreSQL 18.1 service, and executes the four real capsule combinations. Missing container
+capabilities fail that job before acceptance starts; they are not treated as a passing skip.
 
 Exact tool and generated-project dependency versions are recorded in
 [`docs/version_compatibility_decision.md`](docs/version_compatibility_decision.md).
