@@ -25,6 +25,8 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("os: [ubuntu-latest, windows-latest]", workflow)
         self.assertNotIn("continue-on-error", workflow)
         self.assertNotIn("pull_request_target", workflow)
+        self.assertIn("--junitxml=core-test-results.xml", workflow)
+        self.assertIn("::error title=pytest failure::", workflow)
 
         references = ACTION_REFERENCE.findall(workflow)
         self.assertEqual(len(references), 6)
@@ -44,6 +46,7 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("tests/acceptance/test_disposable_release_workflow.py", workflow)
         self.assertIn("tests/acceptance/test_postgres_disposable_release_workflow.py", workflow)
         self.assertIn("tests/acceptance/test_docker_disposable_release_workflow.py", workflow)
+        self.assertIn("--junitxml=release-test-results.xml", workflow)
 
 
 if __name__ == "__main__":

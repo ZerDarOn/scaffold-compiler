@@ -49,11 +49,24 @@ jobs:
       - name: Run cross-platform core tests
         run: >-
           uv run --frozen pytest
+          --junitxml=core-test-results.xml
           tests/unit
           tests/integration
           tests/golden_projects
           tests/acceptance/test_four_combination_workflow.py
           tests/acceptance/test_failed_release_recovery_workflow.py
+      - name: Annotate failed core tests
+        if: failure()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath core-test-results.xml)) { exit 0 }
+          [xml]$report = Get-Content -Raw -LiteralPath core-test-results.xml
+          $failedTests = @($report.SelectNodes('//testcase[failure or error]'))
+          foreach ($testCase in $failedTests) {
+            $identifier = "$($testCase.classname).$($testCase.name)"
+            Write-Output "::error title=pytest failure::$identifier"
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- ``$identifier``"
+          }
 
   release-matrix:
     name: Four real release combinations (Linux)
@@ -100,6 +113,19 @@ jobs:
       - name: Run M-01 through M-04 release acceptance
         run: >-
           uv run --frozen pytest
+          --junitxml=release-test-results.xml
           tests/acceptance/test_disposable_release_workflow.py
           tests/acceptance/test_postgres_disposable_release_workflow.py
           tests/acceptance/test_docker_disposable_release_workflow.py
+      - name: Annotate failed release tests
+        if: failure()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath release-test-results.xml)) { exit 0 }
+          [xml]$report = Get-Content -Raw -LiteralPath release-test-results.xml
+          $failedTests = @($report.SelectNodes('//testcase[failure or error]'))
+          foreach ($testCase in $failedTests) {
+            $identifier = "$($testCase.classname).$($testCase.name)"
+            Write-Output "::error title=pytest failure::$identifier"
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- ``$identifier``"
+          }
