@@ -41,7 +41,7 @@ def make_candidate(workspace: Path) -> CandidateAssemblyResult:
 class CandidateOwnershipStoreTests(unittest.TestCase):
     def test_round_trips_exact_candidate_ownership_deterministically(self) -> None:
         with TemporaryDirectory() as directory:
-            workspace = Path(directory) / ".delivery.scaffold-run"
+            workspace = Path(directory).resolve() / ".delivery.scaffold-run"
             workspace.mkdir()
             candidate = make_candidate(workspace)
             store = CandidateOwnershipStore(workspace / "candidate_ownership.json")
@@ -62,7 +62,7 @@ class CandidateOwnershipStoreTests(unittest.TestCase):
         mutations = ("unknown", "duplicate", "digest")
         for mutation in mutations:
             with self.subTest(mutation=mutation), TemporaryDirectory() as directory:
-                workspace = Path(directory) / ".delivery.scaffold-run"
+                workspace = Path(directory).resolve() / ".delivery.scaffold-run"
                 workspace.mkdir()
                 candidate = make_candidate(workspace)
                 store = CandidateOwnershipStore(workspace / "candidate_ownership.json")
@@ -81,7 +81,7 @@ class CandidateOwnershipStoreTests(unittest.TestCase):
 
     def test_refuses_a_manifest_or_candidate_outside_the_fixed_workspace_children(self) -> None:
         with TemporaryDirectory() as directory:
-            root = Path(directory)
+            root = Path(directory).resolve()
             workspace = root / ".delivery.scaffold-run"
             workspace.mkdir()
             candidate = make_candidate(workspace)

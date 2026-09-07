@@ -156,11 +156,11 @@ def discard_failed_workspace(workspace: Path) -> FailedWorkspaceDiscardResult:
 def _load_workspace_session(workspace: Path) -> tuple[Path, GenerationSession]:
     if not workspace.is_absolute():
         raise ValueError("Workspace path must be absolute.")
-    trusted_workspace = workspace.resolve(strict=True)
-    if trusted_workspace != workspace or not trusted_workspace.is_dir():
-        raise ValueError("Workspace path is not canonical.")
-    if _is_link_or_reparse(trusted_workspace):
+    if _is_link_or_reparse(workspace):
         raise ValueError("Workspace cannot be linked or reparsed.")
+    trusted_workspace = workspace.resolve(strict=True)
+    if not trusted_workspace.is_dir():
+        raise ValueError("Workspace path is not canonical.")
     session_path = trusted_workspace / "session.json"
     if _is_link_or_reparse(session_path):
         raise ValueError("Session evidence cannot be linked or reparsed.")

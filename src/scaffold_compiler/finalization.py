@@ -176,7 +176,7 @@ def publish_commit_snapshot(
     if snapshot.root.parent.parent.resolve(strict=True) != trusted_parent:
         raise FinalizationError("Workspace must be a direct child of the target parent.")
     resolved_target = resolve_safe_output_path(trusted_parent, target.name)
-    if resolved_target != target:
+    if resolved_target != target.resolve(strict=False):
         raise FinalizationError("Finalize target spelling is not canonical.")
     if target.exists() or target.is_symlink():
         raise TargetAlreadyExistsError("Finalize target already exists.")
