@@ -20,6 +20,12 @@ class PackageBaselineTests(unittest.TestCase):
 
         self.assertEqual(pyproject["project"]["dependencies"], [])
 
+    def test_pytest_path_includes_source_and_test_packages(self) -> None:
+        pyproject_path = REPOSITORY_ROOT / "pyproject.toml"
+        pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(pyproject["tool"]["pytest"]["ini_options"]["pythonpath"], ["src", "."])
+
     def test_source_syntax_is_compatible_with_python_311(self) -> None:
         source_root = REPOSITORY_ROOT / "src"
 
