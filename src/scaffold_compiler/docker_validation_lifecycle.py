@@ -61,10 +61,25 @@ def execute_docker_validation_lifecycle(
         commands.validation_id,
         len(requested),
     )
+    defer_container_health = {
+        "container-health",
+        "compose-health",
+    }.issubset(requested)
+    image_requested = (
+        requested.difference({"container-health"}) if defer_container_health else requested
+    )
     if requested.intersection(_IMAGE_VALIDATIONS):
-        checks.extend(_execute_image_lifecycle(commands, requested, safe_runner, sleep))
+        checks.extend(_execute_image_lifecycle(commands, image_requested, safe_runner, sleep))
     if requested.intersection(_COMPOSE_VALIDATIONS):
-        checks.extend(_execute_compose_lifecycle(commands, requested, safe_runner))
+        compose_checks = _execute_compose_lifecycle(commands, requested, safe_runner)
+        if defer_container_health:
+            container_health = _container_health_from_compose(compose_checks)
+            cleanup_index = next(
+                (index for index, check in enumerate(checks) if check.name == "docker-cleanup"),
+                len(checks),
+            )
+            checks.insert(cleanup_index, container_health)
+        checks.extend(compose_checks)
     LOGGER.info(
         "docker_validation_completed validation_id=%s checks=%d incomplete=%d",
         commands.validation_id,
@@ -72,6 +87,24 @@ def execute_docker_validation_lifecycle(
         sum(check.status is not ValidationStatus.PASS for check in checks),
     )
     return tuple(checks)
+
+
+def _container_health_from_compose(
+    compose_checks: list[ValidationCheck],
+) -> ValidationCheck:
+    compose_health = next(check for check in compose_checks if check.name == "compose-health")
+    diagnostics = (
+        "Application container health was verified by the complete Compose stack."
+        if compose_health.status is ValidationStatus.PASS
+        else "Application container health requires a passing Compose health gate."
+    )
+    return ValidationCheck(
+        name="container-health",
+        status=compose_health.status,
+        required=True,
+        phase=ValidationPhase.DELIVERY,
+        diagnostics=diagnostics,
+    )
 
 
 def _execute_image_lifecycle(

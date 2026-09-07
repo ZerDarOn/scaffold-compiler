@@ -181,6 +181,37 @@ class DockerValidationLifecycleTests(unittest.TestCase):
             self.assertIs(statuses["compose-health"], ValidationStatus.SKIPPED)
             self.assertIs(statuses["compose-cleanup"], ValidationStatus.PASS)
 
+    def test_compose_health_proves_container_health_for_a_dependent_application(
+        self,
+    ) -> None:
+        with TemporaryDirectory() as directory:
+            runner = RecordingRunner(
+                {
+                    "compose-health": [
+                        result(stdout="application\ndatabase\n"),
+                    ],
+                }
+            )
+
+            checks = execute_docker_validation_lifecycle(
+                commands(Path(directory), compose=True),
+                (
+                    "docker-build",
+                    "container-non-root",
+                    "container-health",
+                    "compose-config",
+                    "compose-up",
+                    "compose-health",
+                    "compose-cleanup",
+                ),
+                process_runner=runner,
+            )
+
+        statuses = {check.name: check.status for check in checks}
+        self.assertIs(statuses["container-health"], ValidationStatus.PASS)
+        self.assertIs(statuses["compose-health"], ValidationStatus.PASS)
+        self.assertNotIn("container-health-start", runner.calls)
+
     def test_process_start_error_becomes_a_failed_gate_and_cleanup_still_runs(self) -> None:
         with TemporaryDirectory() as directory:
             calls: list[str] = []
