@@ -75,6 +75,7 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("--generate-notes", release)
         self.assertIn("github.ref_type == 'tag'", release)
         self.assertIn("GH_TOKEN: ${{ github.token }}", release)
+        self.assertIn("GH_REPO: ${{ github.repository }}", release)
         self.assertIn("actions: read", release)
         self.assertNotIn("pull_request_target", release)
 
