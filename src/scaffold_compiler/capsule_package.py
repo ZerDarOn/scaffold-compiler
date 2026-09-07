@@ -632,8 +632,8 @@ def _relative_parents(path: Path) -> tuple[Path, ...]:
 
 
 def _paths_overlap(first: Path, second: Path) -> bool:
-    first_normalized = os.path.normcase(str(first.absolute()))
-    second_normalized = os.path.normcase(str(second.absolute()))
+    first_normalized = os.path.normcase(str(first.resolve(strict=False)))
+    second_normalized = os.path.normcase(str(second.resolve(strict=False)))
     try:
         return os.path.commonpath((first_normalized, second_normalized)) in {
             first_normalized,
@@ -644,8 +644,8 @@ def _paths_overlap(first: Path, second: Path) -> bool:
 
 
 def _path_is_within(path: Path, parent: Path) -> bool:
-    normalized_path = os.path.normcase(str(path.absolute()))
-    normalized_parent = os.path.normcase(str(parent.absolute()))
+    normalized_path = os.path.normcase(str(path.resolve(strict=False)))
+    normalized_parent = os.path.normcase(str(parent.resolve(strict=False)))
     try:
         return os.path.commonpath((normalized_path, normalized_parent)) == normalized_parent
     except ValueError:

@@ -32,7 +32,8 @@ class ValidationReportStore:
     def save(self, report: ValidationReport, workspace: Path) -> None:
         """Atomically replace the fixed validation evidence file."""
         trusted_workspace = workspace.resolve(strict=True)
-        if self.path != trusted_workspace / _REPORT_NAME:
+        canonical_path = self.path.parent.resolve(strict=True) / self.path.name
+        if canonical_path != trusted_workspace / _REPORT_NAME or self.path.is_symlink():
             raise ValueError("Validation report is not the fixed workspace file.")
         payload = {
             "blueprint_digest": report.blueprint_digest,
@@ -75,7 +76,8 @@ class ValidationReportStore:
         """Strictly load the fixed validation evidence file."""
         try:
             trusted_workspace = workspace.resolve(strict=True)
-            if self.path != trusted_workspace / _REPORT_NAME:
+            canonical_path = self.path.parent.resolve(strict=True) / self.path.name
+            if canonical_path != trusted_workspace / _REPORT_NAME or self.path.is_symlink():
                 raise ValueError("Validation report is not the fixed workspace file.")
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict) or set(raw) != {

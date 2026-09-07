@@ -36,9 +36,13 @@ class CandidateOwnershipStore:
     def save(self, candidate: CandidateAssemblyResult) -> None:
         """Replace ownership evidence only for the fixed workspace candidate."""
         workspace = candidate.root.parent.resolve(strict=True)
-        if self.path != workspace / _MANIFEST_NAME:
+        canonical_path = self.path.parent.resolve(strict=True) / self.path.name
+        if canonical_path != workspace / _MANIFEST_NAME or self.path.is_symlink():
             raise ValueError("Candidate ownership manifest is not the fixed workspace file.")
-        if candidate.root != workspace / "candidate":
+        if (
+            candidate.root.name != "candidate"
+            or candidate.root.parent.resolve(strict=True) != workspace
+        ):
             raise ValueError("Candidate is not the fixed workspace child.")
         payload = {
             "candidate_digest": candidate.digest,
@@ -70,7 +74,8 @@ class CandidateOwnershipStore:
         """Load ownership evidence bound to the fixed candidate child and its bytes."""
         try:
             trusted_workspace = workspace.resolve(strict=True)
-            if self.path != trusted_workspace / _MANIFEST_NAME:
+            canonical_path = self.path.parent.resolve(strict=True) / self.path.name
+            if canonical_path != trusted_workspace / _MANIFEST_NAME or self.path.is_symlink():
                 raise ValueError("Manifest is not the fixed workspace file.")
             raw = json.loads(self.path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict) or set(raw) != {

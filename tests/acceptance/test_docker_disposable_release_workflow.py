@@ -410,7 +410,7 @@ def _wait_for_postgres(docker: Path, name: str) -> None:
 def _failure_diagnostics(root: Path, stderr: str) -> str:
     reports = tuple(root.glob(".*.scaffold-*/validation_report.json"))
     report = reports[0].read_text(encoding="utf-8") if len(reports) == 1 else ""
-    return f"{stderr}\n{report}"
+    return f"{report}\n{stderr}"
 
 
 if __name__ == "__main__":

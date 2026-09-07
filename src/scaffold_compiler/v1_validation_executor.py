@@ -454,8 +454,8 @@ def _validation_command(
 
 
 def _path_is_within(path: Path, parent: Path) -> bool:
-    normalized_path = os.path.normcase(str(path.absolute()))
-    normalized_parent = os.path.normcase(str(parent.absolute()))
+    normalized_path = os.path.normcase(str(path.resolve(strict=False)))
+    normalized_parent = os.path.normcase(str(parent.resolve(strict=False)))
     try:
         return os.path.commonpath((normalized_path, normalized_parent)) == normalized_parent
     except ValueError:
