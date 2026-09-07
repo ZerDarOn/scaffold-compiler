@@ -149,6 +149,11 @@ class FastApiCoreBlueprintTests(unittest.TestCase):
             self.assertTrue(actual_paths.isdisjoint(expected.forbidden_paths))
 
             dockerfile = (result.root / "Dockerfile").read_text(encoding="utf-8")
+            self.assertIn("FROM python:3.14.7-slim-bookworm AS builder", dockerfile)
+            self.assertIn(
+                "COPY --from=ghcr.io/astral-sh/uv:0.12.9 /uv /uvx /bin/",
+                dockerfile,
+            )
             self.assertIn("uv sync --frozen --no-dev", dockerfile)
             self.assertIn("USER application", dockerfile)
             self.assertIn("HEALTHCHECK", dockerfile)
