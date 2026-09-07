@@ -91,12 +91,12 @@ def parse_project_configuration(
     """Validate untrusted values and return their canonical representation."""
     _reject_unknown_fields(raw_configuration)
 
-    project_name = _normalize_project_name(raw_configuration.get("project_name"))
-    package_name = _normalize_package_name(
+    project_name = normalize_project_name(raw_configuration.get("project_name"))
+    package_name = normalize_python_package_name(
         raw_configuration.get("package_name"),
         project_name=project_name,
     )
-    target_directory = _normalize_target_directory(
+    target_directory = normalize_target_directory(
         raw_configuration.get("target_directory"),
         working_directory=working_directory,
         home_directory=home_directory,
@@ -132,7 +132,8 @@ def _reject_unknown_fields(raw_configuration: Mapping[str, object]) -> None:
         )
 
 
-def _normalize_project_name(raw_project_name: object) -> str:
+def normalize_project_name(raw_project_name: object) -> str:
+    """Normalize a project display name shared by all configuration schemas."""
     if not isinstance(raw_project_name, str):
         raise ConfigurationValidationError(
             field="project_name",
@@ -162,7 +163,8 @@ def _normalize_project_name(raw_project_name: object) -> str:
     return project_name
 
 
-def _normalize_package_name(raw_package_name: object, *, project_name: str) -> str:
+def normalize_python_package_name(raw_package_name: object, *, project_name: str) -> str:
+    """Normalize a Python package name for trusted Python recipes."""
     if raw_package_name is None:
         package_name = _derive_package_name(project_name)
         if not package_name:
@@ -197,12 +199,13 @@ def _derive_package_name(project_name: str) -> str:
     return candidate
 
 
-def _normalize_target_directory(
+def normalize_target_directory(
     raw_target_directory: object,
     *,
     working_directory: Path,
     home_directory: Path,
 ) -> Path:
+    """Normalize and safety-check a new project target directory."""
     if not isinstance(raw_target_directory, str) or not raw_target_directory.strip():
         raise ConfigurationValidationError(
             field="target_directory",
