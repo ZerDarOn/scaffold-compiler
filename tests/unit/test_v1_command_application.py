@@ -105,7 +105,7 @@ class V1CommandApplicationTests(unittest.TestCase):
             self.assertEqual(outcome.message, "Project finalized successfully: delivery")
             configuration = cast(ProjectConfiguration, captured["configuration"])
             self.assertEqual(configuration.database, DatabaseChoice.POSTGRES)
-            self.assertEqual(captured["catalog_root"], catalog_root)
+            self.assertEqual(captured["catalog_root"], catalog_root.resolve())
             self.assertEqual(captured["run_id"], "release-run")
 
     def test_invalid_json_or_domain_failure_returns_safe_stable_failure(self) -> None:
