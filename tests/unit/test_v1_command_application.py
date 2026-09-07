@@ -77,10 +77,7 @@ class V1CommandApplicationTests(unittest.TestCase):
                     called = execute_validation.call_args.kwargs
                 self.assertEqual(called["package_name"], "example")
                 self.assertEqual(called["uv_executable"], uv_executable.resolve())
-                self.assertEqual(
-                    called["validation_environment"],
-                    validation_environment.resolve(),
-                )
+                self.assertEqual(called["validation_environment"], validation_environment)
                 self.assertEqual(called["run_id"], "release-run")
                 self.assertIsNone(called["docker_executable"])
                 self.assertEqual(

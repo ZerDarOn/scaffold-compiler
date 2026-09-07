@@ -27,7 +27,7 @@ class ValidationWorkspaceTests(unittest.TestCase):
 
             result = cleanup_validation_workspace(owned)
 
-            self.assertEqual(owned.root, workspace / "validation-env")
+            self.assertEqual(owned.root, workspace.resolve() / "validation-env")
             self.assertTrue(result.completed)
             self.assertFalse(owned.root.exists())
             self.assertTrue(workspace.exists())
