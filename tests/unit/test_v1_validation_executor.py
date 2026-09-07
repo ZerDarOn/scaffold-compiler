@@ -241,14 +241,20 @@ class V1ValidationExecutorTests(unittest.TestCase):
             )
             self.assertTrue(
                 all(
-                    ("UV_PROJECT_ENVIRONMENT", str(root / "validation-env" / "venv"))
+                    (
+                        "UV_PROJECT_ENVIRONMENT",
+                        str(root.resolve() / "validation-env" / "venv"),
+                    )
                     in specification.environment
                     for specification in specifications
                 )
             )
             self.assertTrue(
                 all(
-                    ("MYPY_CACHE_DIR", str(root / "validation-env" / "mypy-cache"))
+                    (
+                        "MYPY_CACHE_DIR",
+                        str(root.resolve() / "validation-env" / "mypy-cache"),
+                    )
                     in specification.environment
                     for specification in specifications
                 )

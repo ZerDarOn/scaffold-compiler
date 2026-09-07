@@ -14,8 +14,12 @@ from scaffold_compiler.validation import (
 )
 
 
-def result(return_code: int = 0, stdout: str = "") -> ControlledProcessResult:
-    return ControlledProcessResult(return_code, False, stdout, "", False, 1)
+def result(
+    return_code: int = 0,
+    stdout: str = "",
+    stderr: str = "",
+) -> ControlledProcessResult:
+    return ControlledProcessResult(return_code, False, stdout, stderr, False, 1)
 
 
 class RecordingRunner:
@@ -199,6 +203,32 @@ class DockerValidationLifecycleTests(unittest.TestCase):
             self.assertIs(statuses["docker-build"], ValidationStatus.FAIL)
             self.assertIs(statuses["docker-cleanup"], ValidationStatus.PASS)
             self.assertIn("docker-image-cleanup", calls)
+
+    def test_build_failure_logs_bounded_redacted_process_evidence(self) -> None:
+        with (
+            TemporaryDirectory() as directory,
+            self.assertLogs("scaffold_compiler.validation", level="ERROR") as logs,
+        ):
+            execute_docker_validation_lifecycle(
+                commands(Path(directory)),
+                ("docker-build",),
+                process_runner=RecordingRunner(
+                    {
+                        "docker-build": [
+                            result(
+                                return_code=1,
+                                stderr="[REDACTED] pull access denied",
+                            )
+                        ]
+                    }
+                ),
+            )
+
+        visible = "\n".join(logs.output)
+        self.assertIn("validation_process_failed", visible)
+        self.assertIn("name=docker-build", visible)
+        self.assertIn("pull access denied", visible)
+        self.assertIn("[REDACTED]", visible)
 
 
 if __name__ == "__main__":

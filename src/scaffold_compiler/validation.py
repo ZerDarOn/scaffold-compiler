@@ -406,6 +406,17 @@ def check_from_process_result(
         status = ValidationStatus.PASS
     if result.output_truncated:
         diagnostics = f"{diagnostics} Process output was truncated.".strip()
+    if status is ValidationStatus.FAIL:
+        LOGGER.error(
+            "validation_process_failed name=%s return_code=%d timed_out=%s "
+            "output_truncated=%s stdout_tail=%r stderr_tail=%r",
+            name,
+            result.return_code,
+            result.timed_out,
+            result.output_truncated,
+            result.stdout[-2000:],
+            result.stderr[-2000:],
+        )
     return ValidationCheck(
         name=name,
         status=status,

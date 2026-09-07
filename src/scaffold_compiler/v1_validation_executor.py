@@ -289,14 +289,6 @@ def execute_v1_validation(
             required=True,
             result=result,
         )
-        if check.status is ValidationStatus.FAIL:
-            LOGGER.error(
-                "v1_validation_gate_failed gate=%s return_code=%d stdout=%r stderr=%r",
-                name,
-                result.return_code,
-                result.stdout[-2000:],
-                result.stderr[-2000:],
-            )
         checks.append(check)
         if check.status is not ValidationStatus.PASS:
             phase_failed = True

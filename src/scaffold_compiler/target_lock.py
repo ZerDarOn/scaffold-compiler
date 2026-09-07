@@ -55,9 +55,9 @@ class TargetLockStore:
             raise ValueError("Target path must be absolute.")
         parent = target_path.parent.resolve(strict=True)
         canonical_target = resolve_safe_output_path(parent, target_path.name)
-        if canonical_target != target_path:
+        if canonical_target != target_path.resolve(strict=False):
             raise ValueError("Target path spelling is not canonical.")
-        self._target_path = target_path
+        self._target_path = canonical_target
         self._lock_path = resolve_safe_output_path(
             parent,
             f".{target_path.name}.scaffold.lock",

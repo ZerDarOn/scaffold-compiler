@@ -76,8 +76,11 @@ class V1CommandApplicationTests(unittest.TestCase):
                     )
                     called = execute_validation.call_args.kwargs
                 self.assertEqual(called["package_name"], "example")
-                self.assertEqual(called["uv_executable"], uv_executable)
-                self.assertEqual(called["validation_environment"], validation_environment)
+                self.assertEqual(called["uv_executable"], uv_executable.resolve())
+                self.assertEqual(
+                    called["validation_environment"],
+                    validation_environment.resolve(),
+                )
                 self.assertEqual(called["run_id"], "release-run")
                 self.assertIsNone(called["docker_executable"])
                 self.assertEqual(
@@ -201,7 +204,7 @@ class V1CommandApplicationTests(unittest.TestCase):
 
             self.assertEqual(json.loads(inspected.message)["failed_gates"], ["pytest"])
             self.assertEqual(discarded.exit_code, 0)
-            expected = root / ".delivery.scaffold-run-1"
+            expected = root.resolve() / ".delivery.scaffold-run-1"
             inspect_workspace.assert_called_once_with(expected)
             discard_workspace.assert_called_once_with(expected)
 

@@ -28,7 +28,10 @@ class SafeProjectPathTests(unittest.TestCase):
 
             result = resolve_safe_output_path(root, "src/example/application.py")
 
-            self.assertEqual(result, root / "src" / "example" / "application.py")
+            self.assertEqual(
+                result,
+                root.resolve() / "src" / "example" / "application.py",
+            )
 
     def test_rejects_parent_traversal_for_posix_and_windows_spelling(self) -> None:
         for unsafe_path in ("../escape.txt", "src/../../escape.txt", "..\\escape.txt"):
@@ -55,7 +58,7 @@ class SafeProjectPathTests(unittest.TestCase):
             linked_parent.mkdir()
 
             with patch.object(Path, "is_symlink", autospec=True) as is_symlink:
-                is_symlink.side_effect = lambda path: path == linked_parent
+                is_symlink.side_effect = lambda path: path.name == linked_parent.name
                 with self.assertRaises(LinkedProjectPathError):
                     resolve_safe_output_path(root, "linked/output.txt")
 
@@ -68,7 +71,7 @@ class SafeProjectPathTests(unittest.TestCase):
             with (
                 patch(
                     "scaffold_compiler.path_safety._is_windows_reparse_point",
-                    side_effect=lambda path: path == parent,
+                    side_effect=lambda path: path.name == parent.name,
                 ),
                 self.assertRaises(LinkedProjectPathError),
             ):
