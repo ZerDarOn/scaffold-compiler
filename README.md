@@ -11,8 +11,8 @@ V1 deliberately supports only four combinations:
 |---|---|---|
 | None | Local | Runtime-verified |
 | PostgreSQL | Local | Runtime-verified |
-| None | Docker | Real acceptance implemented; first CI pass pending |
-| PostgreSQL | Docker Compose | Real acceptance implemented; first CI pass pending |
+| None | Docker | Runtime-verified on Linux CI |
+| PostgreSQL | Docker Compose | Runtime-verified on Linux CI |
 
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
@@ -128,6 +128,8 @@ The repository workflow runs formatting, lint, typing, and core tests on both Wi
 separate Linux release job requires a working Docker engine and Compose, provisions an isolated
 PostgreSQL 18.1 service, and executes the four real capsule combinations. Missing container
 capabilities fail that job before acceptance starts; they are not treated as a passing skip.
+The same workflow has passed the complete core suite on Windows and Linux and the real M-01 through
+M-04 release matrix on Linux.
 
 Exact tool and generated-project dependency versions are recorded in
 [`docs/version_compatibility_decision.md`](docs/version_compatibility_decision.md).

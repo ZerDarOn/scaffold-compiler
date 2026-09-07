@@ -1,9 +1,9 @@
 # Scaffold Compiler V1 实施方案
 
-> 状态：宏观架构已确认，微观实施计划待执行  
+> 状态：V1 架构、实现与最终质量门禁已完成
 > 工作目录：`D:\Code\Xzt-vital`  
-> 更新时间：2026-09-04  
-> 当前实现：Phase 1 已完成；配置契约、显式状态机与原子状态记录已建立，尚未初始化 Git，尚无运行时依赖
+> 更新时间：2026-09-07
+> 当前实现：Phase 0–8 已完成；主分支具备 Windows/Linux 核心门禁与 Linux 四组合真实发布验收
 
 ## 0. 给后续执行模型的规则
 
@@ -547,7 +547,7 @@ Xzt-vital/
 | 4.2 集中项目文件装配 | DONE | 四组贡献确定装配，TOML/README/CI/env 验收通过；66 tests passed |
 | 4.3 FastAPI 固定核心蓝图 | DONE | Python 3.14 锁定安装、Ruff、mypy、3 tests、Uvicorn health 全通过 |
 | 4.4 PostgreSQL 纵向蓝图 | DONE | Python 3.14 锁定安装、Ruff、mypy、4 tests；隔离 PostgreSQL 迁移、SQL 与 HTTP readiness 全通过 |
-| 4.5 Docker 与组合适配蓝图 | IN_PROGRESS | M-02/M-04 冻结安装、Ruff、mypy、tests 与 Compose config 通过；镜像/容器验收等待 Docker 守护进程 |
+| 4.5 Docker 与组合适配蓝图 | DONE | Linux CI 中 M-02/M-04 的镜像构建、非 root、容器/Compose 健康、迁移与零残留全部通过 |
 | 5.1 验证器与进程控制失败测试 | DONE | 超时树终止、非零退出、输出限制、跨边界脱敏、静态扫描、状态与凭证绑定均覆盖 |
 | 5.2 验证器与进程控制最小实现 | DONE | 受控无 Shell 进程、阶段化报告、静态安全扫描与不可伪造摘要绑定；80 tests passed |
 | 6.1 Finalize 与恢复失败测试 | DONE | 快照前中后篡改、目标竞态、跨卷、原生能力缺失、重复发布、恢复、锁、清理与事务 journal 全覆盖 |
@@ -557,9 +557,9 @@ Xzt-vital/
 | 7.2 CLI 与失败恢复实现 | DONE | 薄 argparse 仅路由应用协议；确定性预览、外部候选/验证证据、只读检查、取消意图先落盘与精确可重试丢弃已接通 |
 | 7.3 一次性发布包失败测试 | DONE | 确定性、开发仓库、损坏/额外内容、竞态修改、失败重试与父进程退出均覆盖 |
 | 7.4 一次性发布包与安全回收 | DONE | 精确清单、W 中冻结 journal、真实 zipapp 外部监督、管道 EOF 和安全重试通过；121 tests passed |
-| 8.1 四组合端到端矩阵 | IN_PROGRESS | 四组合事务链通过；M-01/M-03 均已从确定性发布胶囊完成真实生成、全门验证、Finalize 与自清理；M-03 另含隔离 PostgreSQL 启停和迁移；M-02/M-04 Docker 仍待验收 |
-| 8.2 安全与双平台验收 | IN_PROGRESS | Windows/Linux 核心门禁与 Linux 四组合真实发布门禁已配置；等待首轮远端 CI 结果 |
-| 8.3 文档与发布候选验收 | IN_PROGRESS | README 已覆盖先决条件、四种选择、`preview/inspect/discard/run`、Finalize/自清理语义、PostgreSQL 秘密输入和当前 Docker 限制；Docker 文档命令与最终发布候选仍待验收 |
+| 8.1 四组合端到端矩阵 | DONE | Linux CI 中 M-01 至 M-04 均从确定性发布胶囊完成全门验证、Finalize、自清理与资源零残留 |
+| 8.2 安全与双平台验收 | DONE | Windows/Linux 核心门禁通过；原生 no-replace、路径别名、锁、恢复、清理与脱敏均有真实平台覆盖 |
+| 8.3 文档与发布候选验收 | DONE | README 覆盖完整使用与恢复路径；其命令契约由 CLI、胶囊和四组合发布验收共同验证 |
 
 ### Phase 0：建立可执行基线
 
@@ -870,8 +870,8 @@ Xzt-vital/
 
 ## 15. 当前状态快照
 
-- Done：架构方案、Phases 0–3、Tasks 4.1–4.4 和 Phases 5–7；一次性胶囊已收窄为 `preview / inspect / discard / run`，并完成失败工作区证据持久化、安全检查与可重试清理；Docker 验证已具备不暴露用户输入的资源身份、无 Shell 固定命令、所有权复核、健康轮询、无条件补偿和残留复核，并已接入 V1 验证器与发布入口；M-02/M-04 均已具备真实胶囊验收入口和失败后精确测试补偿，M-04 另具备隔离辅助 PostgreSQL 与随机宿主端口；M-01/M-03 已真实运行，M-02/M-04 的代码侧与 Compose 静态验收完成。
-- Tests：182 tests passed、2 Docker acceptance skipped、154 subtests passed；M-01/M-03 均已从一次性胶囊完成静态安全、冻结安装、Python syntax、Ruff、mypy、pytest、HTTP、Finalize、验证环境清理和父进程退出后的胶囊/journal 回收；M-02/M-04 因当前 Docker 守护进程不可用而明确跳过，未计为通过；失败验证链路已从胶囊完成证据检查与精确清理；M-03 另通过隔离 PostgreSQL 18 启停、Alembic、SQL、数据库 readiness 和回滚；Docker 资源命名、所有权标签、固定参数数组、Compose 临时密码脱敏、进程启动失败、同名资源竞态、健康判断及精确补偿清理已通过单元测试；固定完整 SHA 的 CI 工作流已覆盖 Windows/Linux 核心门禁，并在 Linux 发布 job 中要求 Docker、Compose、隔离 PostgreSQL 18.1 与 M-01 至 M-04 真实胶囊验收；合法长包名的生成导入已固定换行；Windows 字节码超长路径已通过禁写字节码与纯内存语法编译消除。
-- Next：触发并观察首轮远端 CI，在 Linux Docker job 中验证 M-02/M-04 的真实镜像构建、非 root、容器健康、Compose 迁移/健康及零残留，并确认 Windows/Linux 原生 no-replace 路径；通过前 Tasks 4.5、8.1、8.2 保持未完成。
-- Debt：Docker 镜像构建、非 root 运行、容器健康和 Compose 清理仍为必需的未通过门，当前不得声称 Task 4.5 完成。
+- Done：V1 的 Phases 0–8 全部完成；一次性胶囊仅暴露 `preview / inspect / discard / run`，生成、验证、原子 Finalize、失败恢复与外部监督自清理形成闭环；M-01 至 M-04 均通过真实发布验收。
+- Tests：本地完整套件、Ruff 与 Windows/Linux mypy 通过；GitHub Actions 的 Windows/Ubuntu 核心作业和 Linux 四组合发布作业全部通过。Linux 发布作业真实执行 Docker 镜像构建、非 root、容器健康、PostgreSQL 18 Compose 迁移/健康及精确资源清理。
+- Next：V1 可作为发布候选；后续新增能力必须作为新蓝图进入同等强度的组合矩阵，不扩大 V1 已冻结的四组合范围。
+- Debt：本机没有可用 Docker daemon，因此本地 Docker 验收保持明确跳过；该缺口由 Linux CI 的必需实测门覆盖，不影响当前发布结论。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。
