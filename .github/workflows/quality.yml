@@ -64,7 +64,11 @@ jobs:
           $failedTests = @($report.SelectNodes('//testcase[failure or error]'))
           foreach ($testCase in $failedTests) {
             $identifier = "$($testCase.GetAttribute('classname')).$($testCase.GetAttribute('name'))"
-            Write-Output "::error title=pytest failure::$identifier"
+            $failureNode = @($testCase.SelectNodes('failure|error'))[0]
+            $details = "$identifier`n$($failureNode.InnerText)"
+            $details = $details.Substring(0, [Math]::Min(2000, $details.Length))
+            $details = $details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=pytest failure::$details"
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- ``$identifier``"
           }
 
@@ -126,6 +130,10 @@ jobs:
           $failedTests = @($report.SelectNodes('//testcase[failure or error]'))
           foreach ($testCase in $failedTests) {
             $identifier = "$($testCase.GetAttribute('classname')).$($testCase.GetAttribute('name'))"
-            Write-Output "::error title=pytest failure::$identifier"
+            $failureNode = @($testCase.SelectNodes('failure|error'))[0]
+            $details = "$identifier`n$($failureNode.InnerText)"
+            $details = $details.Substring(0, [Math]::Min(2000, $details.Length))
+            $details = $details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=pytest failure::$details"
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- ``$identifier``"
           }
