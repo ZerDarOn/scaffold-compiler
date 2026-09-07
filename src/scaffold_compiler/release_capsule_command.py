@@ -13,6 +13,7 @@ from typing import TextIO
 from scaffold_compiler import __version__
 from scaffold_compiler.capsule_package import verify_capsule_from_entry
 from scaffold_compiler.disposable_release_builder import build_disposable_release
+from scaffold_compiler.release_capsule_archive import build_release_capsule_archive
 
 
 def release_capsule_id(version: str) -> str:
@@ -47,16 +48,24 @@ def main(
     """Build one release capsule without overwriting an existing destination."""
     parser = argparse.ArgumentParser(prog="scaffold-compiler-release")
     parser.add_argument("--destination", required=True, type=Path)
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="also create deterministic ZIP and SHA-256 release assets",
+    )
     parsed = parser.parse_args(arguments)
     selected_source = Path(__file__).resolve().parents[2] if source_root is None else source_root
     selected_stdout = sys.stdout if stdout is None else stdout
     selected_stderr = sys.stderr if stderr is None else stderr
     try:
         built = build_release_capsule(selected_source, parsed.destination)
+        assets = build_release_capsule_archive(built) if parsed.archive else ()
     except (OSError, ValueError) as error:
         selected_stderr.write(f"Release capsule could not be built: {error}\n")
         return 1
     selected_stdout.write(f"{built.resolve()}\n")
+    for asset in assets:
+        selected_stdout.write(f"{asset.resolve()}\n")
     return 0
 
 

@@ -141,11 +141,13 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-1.0.0
+  --destination .\dist\scaffold-compiler-1.0.1 `
+  --archive
 ```
 
 The command derives the capsule identity from the package version, builds the deterministic
-directory, and verifies its manifest before returning success. The `release-capsule` GitHub
-workflow reruns the complete quality workflow before uploading the same directory as an Actions
-artifact. A tag must exactly match `v<package-version>`; the workflow does not create tags or
-publish a GitHub Release automatically.
+directory, verifies its manifest, and optionally emits a byte-stable ZIP plus a `.sha256` checksum.
+The `release-capsule` GitHub workflow reruns the complete quality workflow before uploading the
+directory and both release assets as an Actions artifact. A tag must exactly match
+`v<package-version>`. Tag-triggered runs then publish the ZIP and checksum as a GitHub Release;
+manual workflow runs remain artifact-only and cannot publish a release.

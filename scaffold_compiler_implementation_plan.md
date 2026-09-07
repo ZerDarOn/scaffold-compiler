@@ -872,6 +872,6 @@ Xzt-vital/
 
 - Done：V1 的 Phases 0–8 全部完成；一次性胶囊仅暴露 `preview / inspect / discard / run`，生成、验证、原子 Finalize、失败恢复与外部监督自清理形成闭环；M-01 至 M-04 均通过真实发布验收。
 - Tests：本地完整套件、Ruff 与 Windows/Linux mypy 通过；GitHub Actions 的 Windows/Ubuntu 核心作业和 Linux 四组合发布作业全部通过。Linux 发布作业真实执行 Docker 镜像构建、非 root、容器健康、PostgreSQL 18 Compose 迁移/健康及精确资源清理。
-- Next：V1 可作为发布候选；后续新增能力必须作为新蓝图进入同等强度的组合矩阵，不扩大 V1 已冻结的四组合范围。
+- Next：V1 已具备标签触发的版本化 ZIP、SHA-256 校验文件与 GitHub Release 发布链路；后续新增能力必须作为新蓝图进入同等强度的组合矩阵，不扩大 V1 已冻结的四组合范围。
 - Debt：本机没有可用 Docker daemon，因此本地 Docker 验收保持明确跳过；该缺口由 Linux CI 的必需实测门覆盖，不影响当前发布结论。
 - Rollback point：Phase 3 装配层可独立回退；最终目标目录仍无任何写入路径。

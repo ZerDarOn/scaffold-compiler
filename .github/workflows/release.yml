@@ -19,6 +19,10 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      release-version: ${{ steps.version.outputs.release-version }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,6 +42,7 @@ jobs:
       - name: Install locked development environment
         run: uv sync --extra dev --locked
       - name: Resolve and validate release version
+        id: version
         shell: pwsh
         run: |
           $version = uv run --frozen python -c "from scaffold_compiler import __version__; print(__version__)"
@@ -45,16 +50,53 @@ jobs:
             throw "Tag must exactly match v$version."
           }
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "release-version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
       - name: Build and verify capsule
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path dist -ErrorAction Stop
-          uv run --frozen python -m scaffold_compiler.release_capsule_command --destination "dist/scaffold-compiler-$env:RELEASE_VERSION"
+          uv run --frozen python -m scaffold_compiler.release_capsule_command --destination "dist/scaffold-compiler-$env:RELEASE_VERSION" --archive
           uv run --frozen python "dist/scaffold-compiler-$env:RELEASE_VERSION/scaffold_compiler.pyz" --help
+          $archive = "dist/scaffold-compiler-$env:RELEASE_VERSION.zip"
+          $checksum = ((Get-Content -Raw "$archive.sha256") -split '\s+')[0]
+          $actual = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          if ($checksum -ne $actual) {
+            throw "Release archive checksum verification failed."
+          }
       - name: Upload release capsule
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scaffold-compiler-${{ env.RELEASE_VERSION }}
-          path: dist/scaffold-compiler-${{ env.RELEASE_VERSION }}
+          path: |
+            dist/scaffold-compiler-${{ env.RELEASE_VERSION }}
+            dist/scaffold-compiler-${{ env.RELEASE_VERSION }}.zip
+            dist/scaffold-compiler-${{ env.RELEASE_VERSION }}.zip.sha256
           if-no-files-found: error
           include-hidden-files: true
+  publish:
+    name: Publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: scaffold-compiler-${{ needs.build.outputs.release-version }}
+          path: dist
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.build.outputs.release-version }}
+        run: |
+          gh release create "$env:GITHUB_REF_NAME" `
+            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip#Disposable capsule (ZIP)" `
+            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip.sha256#SHA-256 checksum" `
+            --verify-tag `
+            --generate-notes `
+            --title "Scaffold Compiler $env:RELEASE_VERSION"

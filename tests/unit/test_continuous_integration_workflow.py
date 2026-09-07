@@ -13,6 +13,7 @@ EXPECTED_ACTION_REVISIONS = {
     "astral-sh/setup-uv": "c771a70e6277c0a99b617c7a806ffedaca235ff9",
 }
 UPLOAD_ARTIFACT_REVISION = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+DOWNLOAD_ARTIFACT_REVISION = "3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c"
 
 
 class ContinuousIntegrationWorkflowTests(unittest.TestCase):
@@ -61,8 +62,21 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("uses: ./.github/workflows/quality.yml", release)
         self.assertIn("needs: quality", release)
         self.assertIn("python -m scaffold_compiler.release_capsule_command", release)
+        self.assertIn("--archive", release)
+        self.assertIn("Get-FileHash -Algorithm SHA256", release)
+        self.assertIn("Release archive checksum verification failed.", release)
         self.assertIn(f"actions/upload-artifact@{UPLOAD_ARTIFACT_REVISION}", release)
+        self.assertIn(f"actions/download-artifact@{DOWNLOAD_ARTIFACT_REVISION}", release)
         self.assertIn("if-no-files-found: error", release)
+        self.assertIn("contents: write", release)
+        self.assertEqual(release.count("contents: write"), 1)
+        self.assertIn("gh release create", release)
+        self.assertIn("--verify-tag", release)
+        self.assertIn("--generate-notes", release)
+        self.assertIn("github.ref_type == 'tag'", release)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", release)
+        self.assertIn("actions: read", release)
+        self.assertNotIn("pull_request_target", release)
 
 
 if __name__ == "__main__":
