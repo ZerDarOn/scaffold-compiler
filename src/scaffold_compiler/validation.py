@@ -199,7 +199,9 @@ def run_controlled_process(specification: ControlledProcessSpec) -> ControlledPr
         specification.timeout_seconds,
     )
     started = time.monotonic()
-    creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    creation_flags = (
+        int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) if os.name == "nt" else 0
+    )
     environment = os.environ.copy()
     environment.update(specification.environment)
     process = subprocess.Popen(

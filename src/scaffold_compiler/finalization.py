@@ -428,16 +428,18 @@ def _native_move_no_replace(source: Path, target: Path) -> None:
 
 def _windows_move_no_replace(source: Path, target: Path) -> None:
     win_dll = vars(ctypes).get("WinDLL")
-    if win_dll is None:
+    set_last_error = vars(ctypes).get("set_last_error")
+    get_last_error = vars(ctypes).get("get_last_error")
+    if win_dll is None or set_last_error is None or get_last_error is None:
         raise NativeNoReplaceUnavailableError("MoveFileExW is unavailable.")
     kernel32 = win_dll("kernel32", use_last_error=True)
     move_file = kernel32.MoveFileExW
     move_file.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
     move_file.restype = ctypes.c_int
-    ctypes.set_last_error(0)
+    set_last_error(0)
     if move_file(str(source), str(target), 0):
         return
-    error_code = ctypes.get_last_error()
+    error_code = int(get_last_error())
     if error_code in _WINDOWS_TARGET_EXISTS:
         raise FileExistsError(error_code, "Finalize target already exists.", str(target))
     raise OSError(error_code, "MoveFileExW failed.", str(source), str(target))

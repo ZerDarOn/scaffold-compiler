@@ -294,7 +294,9 @@ def start_capsule_cleanup_supervisor(
 
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(capsule.entry_path)
-    creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    creation_flags = (
+        int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)) if os.name == "nt" else 0
+    )
     supervisor_code = (
         "from scaffold_compiler.capsule_package import _capsule_supervisor_main; "
         "_capsule_supervisor_main()"
