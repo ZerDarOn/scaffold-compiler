@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -49,7 +50,7 @@ class ValidationWorkspaceTests(unittest.TestCase):
             self.assertTrue(dependency.exists())
             self.assertTrue(marker.exists())
 
-    def test_linked_descendant_causes_zero_deletions(self) -> None:
+    def test_windows_reparse_descendant_causes_zero_deletions(self) -> None:
         with TemporaryDirectory() as directory:
             workspace = Path(directory) / ".delivery.scaffold-run-1"
             workspace.mkdir()
@@ -57,16 +58,29 @@ class ValidationWorkspaceTests(unittest.TestCase):
             dependency = owned.root / "dependency.bin"
             dependency.write_bytes(b"preserve")
 
-            with patch.object(
-                Path,
-                "is_symlink",
-                autospec=True,
+            with patch(
+                "scaffold_compiler.validation_workspace._is_windows_reparse_point",
                 side_effect=lambda path: path.name == "dependency.bin",
             ):
                 result = cleanup_validation_workspace(owned)
 
             self.assertFalse(result.completed)
             self.assertEqual(dependency.read_bytes(), b"preserve")
+
+    @unittest.skipIf(os.name == "nt", "POSIX symlink semantics are validated on Linux")
+    def test_posix_symlink_is_unlinked_without_following_its_external_target(self) -> None:
+        with TemporaryDirectory() as directory:
+            workspace = Path(directory) / ".delivery.scaffold-run-1"
+            workspace.mkdir()
+            external = Path(directory) / "external.bin"
+            external.write_bytes(b"preserve")
+            owned = prepare_validation_workspace(workspace, run_id="run-1")
+            (owned.root / "python").symlink_to(external)
+
+            result = cleanup_validation_workspace(owned)
+
+            self.assertTrue(result.completed)
+            self.assertEqual(external.read_bytes(), b"preserve")
 
     def test_cleanup_is_retryable_and_deletes_marker_last(self) -> None:
         with TemporaryDirectory() as directory:

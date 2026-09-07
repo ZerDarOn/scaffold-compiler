@@ -247,11 +247,14 @@ class StaticSafetyScanTests(unittest.TestCase):
 
     def test_rejects_placeholders_generation_paths_and_secrets_without_echoing_them(self) -> None:
         secret = "private-token"
-        forbidden = Path("C:/generator/workspace")
-        unsafe_values = ("${package_name}", forbidden.as_posix(), secret)
-
-        for unsafe_value in unsafe_values:
-            with self.subTest(unsafe_value=unsafe_value), TemporaryDirectory() as directory:
+        for unsafe_kind in ("placeholder", "path", "secret"):
+            with self.subTest(unsafe_kind=unsafe_kind), TemporaryDirectory() as directory:
+                forbidden = Path(directory).resolve() / "generator-workspace"
+                unsafe_value = {
+                    "placeholder": "${package_name}",
+                    "path": forbidden.as_posix(),
+                    "secret": secret,
+                }[unsafe_kind]
                 result = self.assemble_candidate(Path(directory), unsafe_value)
                 check = scan_candidate_static_safety(
                     result,
@@ -268,7 +271,7 @@ class StaticSafetyScanTests(unittest.TestCase):
 
             check = scan_candidate_static_safety(
                 result,
-                forbidden_absolute_paths=(Path("C:/generator/workspace"),),
+                forbidden_absolute_paths=(Path(directory).resolve() / "generator-workspace",),
                 secrets=("private-token",),
             )
 
@@ -288,7 +291,7 @@ class StaticSafetyScanTests(unittest.TestCase):
 
                 check = scan_candidate_static_safety(
                     result,
-                    forbidden_absolute_paths=(Path("C:/generator/workspace"),),
+                    forbidden_absolute_paths=(Path(directory).resolve() / "generator-workspace",),
                     secrets=("private-token",),
                 )
 

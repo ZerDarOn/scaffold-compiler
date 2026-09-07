@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import errno
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -260,7 +260,7 @@ class FinalizeTransactionTests(unittest.TestCase):
             def race(source: Path, destination: Path) -> None:
                 destination.mkdir()
                 (destination / "competitor.txt").write_text("keep", encoding="utf-8")
-                os.rename(source, destination)
+                raise FileExistsError(errno.EEXIST, "target exists", destination)
 
             with self.assertRaises(TargetAlreadyExistsError):
                 publish_confirmed_project(

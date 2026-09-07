@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import errno
 import hashlib
-import os
 import stat
 import unittest
 from pathlib import Path
@@ -163,7 +163,7 @@ class AtomicPublishTests(unittest.TestCase):
             def racing_mover(source: Path, destination: Path) -> None:
                 destination.mkdir()
                 (destination / "owned-by-user.txt").write_text("keep", encoding="utf-8")
-                os.rename(source, destination)
+                raise FileExistsError(errno.EEXIST, "target exists", destination)
 
             with self.assertRaises(TargetAlreadyExistsError):
                 publish_commit_snapshot(snapshot, target, mover=racing_mover)

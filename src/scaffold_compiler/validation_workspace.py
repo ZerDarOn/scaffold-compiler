@@ -94,8 +94,8 @@ def cleanup_validation_workspace(
 
     delete_file = unlinker or Path.unlink
     marker = expected_root / _MARKER_NAME
-    files = [path for path in entries if path.is_file() and path != marker]
-    directories = [path for path in entries if path.is_dir()]
+    files = [path for path in entries if (path.is_symlink() or path.is_file()) and path != marker]
+    directories = [path for path in entries if not path.is_symlink() and path.is_dir()]
     failures = 0
     for path in sorted(files, key=lambda item: len(item.parts), reverse=True):
         try:
@@ -151,11 +151,18 @@ def _preflight_owned_entries(
         record = json.loads(marker.read_text(encoding="utf-8"))
         if record != {"run_id": owned.run_id, "schema_version": _SCHEMA_VERSION}:
             return None
-        entries = list(root.rglob("*"))
-        if any(_is_link_or_reparse(path) for path in entries):
-            return None
-        if any(not path.is_file() and not path.is_dir() for path in entries):
-            return None
+        entries: list[Path] = []
+        for directory, directory_names, file_names in os.walk(root, followlinks=False):
+            current = Path(directory)
+            children = [current / name for name in (*directory_names, *file_names)]
+            if any(_is_windows_reparse_point(path) for path in children):
+                return None
+            if any(
+                not path.is_symlink() and not path.is_file() and not path.is_dir()
+                for path in children
+            ):
+                return None
+            entries.extend(children)
     except (OSError, json.JSONDecodeError):
         return None
     return entries
@@ -164,6 +171,10 @@ def _preflight_owned_entries(
 def _is_link_or_reparse(path: Path) -> bool:
     if path.is_symlink():
         return True
+    return _is_windows_reparse_point(path)
+
+
+def _is_windows_reparse_point(path: Path) -> bool:
     try:
         attributes = getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0)
     except OSError:
