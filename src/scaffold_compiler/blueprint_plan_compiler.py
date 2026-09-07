@@ -131,9 +131,7 @@ def resolve_recipe_capabilities(
     capabilities = set(recipe.required_capabilities)
     for rule in recipe.capability_rules:
         if all(
-            key in answers
-            and type(answers[key]) is type(expected)
-            and answers[key] == expected
+            key in answers and type(answers[key]) is type(expected) and answers[key] == expected
             for key, expected in rule.conditions
         ):
             capabilities.update(rule.requested_capabilities)

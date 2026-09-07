@@ -161,9 +161,7 @@ def _parse_v2_configuration(
         home_directory=home_directory,
     )
     raw_answers = raw_configuration.get("answers")
-    if not isinstance(raw_answers, Mapping) or any(
-        not isinstance(key, str) for key in raw_answers
-    ):
+    if not isinstance(raw_answers, Mapping) or any(not isinstance(key, str) for key in raw_answers):
         _raise_configuration_error(
             "answers",
             "invalid_answers",

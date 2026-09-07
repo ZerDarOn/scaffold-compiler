@@ -199,9 +199,10 @@ class RecipeProjectConfigurationTests(unittest.TestCase):
                 "existing": existing_target,
                 "missing_parent": working_directory / "missing" / "project",
             }.items():
-                with self.subTest(expected_code=expected_code), self.assertRaises(
-                    ConfigurationValidationError
-                ) as error_context:
+                with (
+                    self.subTest(expected_code=expected_code),
+                    self.assertRaises(ConfigurationValidationError) as error_context,
+                ):
                     parse_builtin_recipe_project_configuration(
                         {
                             "schema_version": 2,

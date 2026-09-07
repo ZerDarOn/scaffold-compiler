@@ -65,9 +65,10 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
         )
 
         for field, expected_code in adapter_cases:
-            with self.subTest(field=field), self.assertRaises(
-                ProjectRecipeRegistryError
-            ) as error_context:
+            with (
+                self.subTest(field=field),
+                self.assertRaises(ProjectRecipeRegistryError) as error_context,
+            ):
                 build_project_recipe_registry(
                     [_recipe_record(**{field: "arbitrary.module:callable"})],
                     trusted_answer_parser_keys={"test-answers"},
@@ -79,9 +80,10 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
 
     def test_rejects_executable_or_unknown_recipe_fields(self) -> None:
         for field in ("command", "hook", "download_url", "import_path"):
-            with self.subTest(field=field), self.assertRaises(
-                ProjectRecipeRegistryError
-            ) as error_context:
+            with (
+                self.subTest(field=field),
+                self.assertRaises(ProjectRecipeRegistryError) as error_context,
+            ):
                 build_project_recipe_registry(
                     [_recipe_record(**{field: "do-not-execute"})],
                     trusted_answer_parser_keys={"test-answers"},
@@ -102,9 +104,10 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
         )
 
         for overrides, expected_code in invalid_cases:
-            with self.subTest(expected_code=expected_code), self.assertRaises(
-                ProjectRecipeRegistryError
-            ) as error_context:
+            with (
+                self.subTest(expected_code=expected_code),
+                self.assertRaises(ProjectRecipeRegistryError) as error_context,
+            ):
                 build_project_recipe_registry(
                     [_recipe_record(**overrides)],
                     trusted_answer_parser_keys={"test-answers"},
