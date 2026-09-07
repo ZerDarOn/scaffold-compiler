@@ -133,3 +133,19 @@ M-04 release matrix on Linux.
 
 Exact tool and generated-project dependency versions are recorded in
 [`docs/version_compatibility_decision.md`](docs/version_compatibility_decision.md).
+
+## Build a versioned release capsule
+
+Maintainers can build the current version without overwriting an existing artifact:
+
+```powershell
+New-Item -ItemType Directory -Path dist
+.venv\Scripts\python -m scaffold_compiler.release_capsule_command `
+  --destination .\dist\scaffold-compiler-1.0.0
+```
+
+The command derives the capsule identity from the package version, builds the deterministic
+directory, and verifies its manifest before returning success. The `release-capsule` GitHub
+workflow reruns the complete quality workflow before uploading the same directory as an Actions
+artifact. A tag must exactly match `v<package-version>`; the workflow does not create tags or
+publish a GitHub Release automatically.

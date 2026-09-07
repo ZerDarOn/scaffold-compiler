@@ -12,6 +12,7 @@ EXPECTED_ACTION_REVISIONS = {
     "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
     "astral-sh/setup-uv": "c771a70e6277c0a99b617c7a806ffedaca235ff9",
 }
+UPLOAD_ARTIFACT_REVISION = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 
 
 class ContinuousIntegrationWorkflowTests(unittest.TestCase):
@@ -47,6 +48,21 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("tests/acceptance/test_postgres_disposable_release_workflow.py", workflow)
         self.assertIn("tests/acceptance/test_docker_disposable_release_workflow.py", workflow)
         self.assertIn("--junitxml=release-test-results.xml", workflow)
+
+    def test_release_workflow_reuses_quality_and_uploads_a_versioned_capsule(self) -> None:
+        repository = Path(__file__).parents[2]
+        quality = (repository / ".github" / "workflows" / "quality.yml").read_text(encoding="utf-8")
+        release = (repository / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+        self.assertIn("workflow_call:", quality)
+        self.assertIn("branches: [main]", quality)
+        self.assertIn("workflow_dispatch:", release)
+        self.assertIn('tags: ["v*"]', release)
+        self.assertIn("uses: ./.github/workflows/quality.yml", release)
+        self.assertIn("needs: quality", release)
+        self.assertIn("python -m scaffold_compiler.release_capsule_command", release)
+        self.assertIn(f"actions/upload-artifact@{UPLOAD_ARTIFACT_REVISION}", release)
+        self.assertIn("if-no-files-found: error", release)
 
 
 if __name__ == "__main__":

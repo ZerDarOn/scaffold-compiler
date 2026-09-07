@@ -1,0 +1,60 @@
+name: release-capsule
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+    permissions:
+      contents: read
+
+  build:
+    name: Build versioned release capsule
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+          check-latest: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.12.9"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked development environment
+        run: uv sync --extra dev --locked
+      - name: Resolve and validate release version
+        shell: pwsh
+        run: |
+          $version = uv run --frozen python -c "from scaffold_compiler import __version__; print(__version__)"
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw "Tag must exactly match v$version."
+          }
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Build and verify capsule
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -ErrorAction Stop
+          uv run --frozen python -m scaffold_compiler.release_capsule_command --destination "dist/scaffold-compiler-$env:RELEASE_VERSION"
+          uv run --frozen python "dist/scaffold-compiler-$env:RELEASE_VERSION/scaffold_compiler.pyz" --help
+      - name: Upload release capsule
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scaffold-compiler-${{ env.RELEASE_VERSION }}
+          path: dist/scaffold-compiler-${{ env.RELEASE_VERSION }}
+          if-no-files-found: error
+          include-hidden-files: true

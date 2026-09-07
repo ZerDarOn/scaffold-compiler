@@ -12,7 +12,13 @@ class PackageBaselineTests(unittest.TestCase):
     def test_package_can_be_imported(self) -> None:
         import scaffold_compiler
 
-        self.assertEqual(scaffold_compiler.__version__, "0.0.0")
+        pyproject = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        self.assertEqual(scaffold_compiler.__version__, "1.0.0")
+        self.assertEqual(pyproject["project"]["dynamic"], ["version"])
+        self.assertEqual(
+            pyproject["tool"]["setuptools"]["dynamic"]["version"],
+            {"attr": "scaffold_compiler.__version__"},
+        )
 
     def test_runtime_dependency_list_is_empty(self) -> None:
         pyproject_path = REPOSITORY_ROOT / "pyproject.toml"

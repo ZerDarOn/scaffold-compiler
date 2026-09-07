@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scaffold-compiler"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Compile constrained blueprints into verified, standalone projects."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,6 +20,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "scaffold_compiler.__version__"}
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--strict-config", "--strict-markers"]
