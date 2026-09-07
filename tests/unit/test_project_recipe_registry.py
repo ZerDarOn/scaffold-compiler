@@ -97,7 +97,6 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
             ({"schema_version": True}, "unsupported_recipe_schema"),
             ({"id": "../../recipe"}, "invalid_recipe_id"),
             ({"version": "latest"}, "invalid_recipe_version"),
-            ({"required_capabilities": ["missing"]}, "unknown_capability"),
             ({"allowed_blueprints": ["duplicate", "duplicate"]}, "duplicate_blueprint_id"),
             ({"allowed_validations": ["syntax", "syntax"]}, "duplicate_validation_gate"),
         )

@@ -268,6 +268,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 2.1｜配方作用域与无阶段规划失败测试
 
+**状态：完成。**
+
 - Input：ADR-03、现有能力 DAG 与文件所有权规则。
 - Output：配方蓝图白名单、跨配方能力拒绝、显式依赖顺序、稳定无依赖排序、循环、冲突和重复文件所有者测试。
 - Risk：C 与 Python 蓝图混入同一计划，或移除阶段后计划不确定。
@@ -276,12 +278,16 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 2.2｜通用计划编译器最小实现
 
+**状态：完成。**
+
 - Input：Task 2.1 测试。
 - Output：不依赖语言阶段枚举、受配方允许集合约束的能力计划；计划摘要增加配方身份。
 - Risk：旧计划摘要与 journal 恢复语义被提前改变。
 - Rollback：新规划器保持旁路，V1 会话继续使用旧计划。
 
 #### Task 2.3｜FastAPI 蓝图 schema 迁移
+
+**状态：完成。**
 
 - Input：Task 2.2、现有七个蓝图及四组合期望。
 - Output：移除固定阶段字段的声明式蓝图与等价依赖关系，全部由 FastAPI 配方显式允许。
@@ -433,10 +439,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：V2 产品边界、七维风险、五项 ADR、24 个微任务，以及 Phase 1 通用配置封装与 FastAPI 受信配方注册。
-- Tests：通用配置与配方注册契约测试已新增；本地全量回归为 206 passed、3 skipped，Ruff 与严格 mypy 通过。
-- Next：Task 2.1，先写配方作用域、能力依赖排序和跨配方拒绝的失败测试。
+- Done：V2 产品边界、七维风险、五项 ADR、24 个微任务，以及 Phase 1–2 的通用配置、受信配方注册、配方作用域规划和 FastAPI 蓝图 schema 2 迁移。
+- Tests：本地全量回归为 215 passed、3 skipped；配方边界、显式排序、稳定排序、跨配方拒绝和四种 FastAPI 组合均有契约覆盖。
+- Next：Task 3.1，先写通用装配适配器的注册、绑定和输出所有权失败测试。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：V1 CLI 仍未接入新入口；可整体移除 Phase 1 新模块与测试并还原三个公开规范化函数名。
+- Rollback point：V1 CLI 仍使用旧配置入口，但规划已委托新配方规划器；可按 Phase 2 提交整体回退到 schema 1 与旧规划器。
 
-Phase 1 complete. Proceed with Phase 2?
+Phase 2 complete. Proceed with Phase 3?

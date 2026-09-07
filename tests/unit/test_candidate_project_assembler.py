@@ -32,10 +32,10 @@ def write_test_catalog(root: Path) -> None:
     static_bytes = b"root = true\n"
     (static / "editorconfig").write_bytes(static_bytes)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": "core",
         "version": "1.0.0",
-        "stage": "project-quality",
+        "after": [],
         "provides": ["core"],
         "requires": [],
         "conflicts": [],

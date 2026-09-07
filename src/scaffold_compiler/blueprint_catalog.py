@@ -9,40 +9,24 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Final
 
-BLUEPRINT_SCHEMA_VERSION: Final = 1
+BLUEPRINT_SCHEMA_VERSION: Final = 2
 _IDENTIFIER_PATTERN: Final = re.compile(r"^[a-z][a-z0-9-]*$")
 _VERSION_PATTERN: Final = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-_MANIFEST_FIELDS: Final = frozenset(
+_COMMON_MANIFEST_FIELDS: Final = frozenset(
     {
-        "schema_version",
+        "conflicts",
+        "contributions",
+        "files",
         "id",
-        "version",
-        "stage",
         "provides",
         "requires",
-        "conflicts",
-        "variables",
-        "files",
-        "contributions",
+        "schema_version",
         "validations",
+        "variables",
+        "version",
     }
 )
-
-
-class ApplicationStage(StrEnum):
-    """The fixed cross-blueprint application stages, in execution order."""
-
-    PROJECT_QUALITY = "project-quality"
-    PYTHON_RUNTIME = "python-runtime"
-    FASTAPI_HTTP_API = "fastapi-http-api"
-    POSTGRES_PERSISTENCE = "postgres-persistence"
-    DOCKER_DELIVERY = "docker-delivery"
-    POSTGRES_DOCKER_INTEGRATION = "postgres-docker-integration"
-    FINAL_PROJECT_ASSEMBLY = "final-project-assembly"
-
-    @property
-    def order(self) -> int:
-        return tuple(ApplicationStage).index(self)
+_V2_MANIFEST_FIELDS: Final = _COMMON_MANIFEST_FIELDS | {"after"}
 
 
 class BlueprintFileKind(StrEnum):
@@ -70,10 +54,11 @@ class BlueprintManifest:
     """Normalized immutable blueprint metadata."""
 
     blueprint_id: str
+    schema_version: int
     version: str
-    stage: ApplicationStage
     provides: tuple[str, ...]
     requires: tuple[str, ...]
+    after: tuple[str, ...]
     conflicts: tuple[str, ...]
     files: tuple[BlueprintFile, ...]
     variables: tuple[str, ...]
@@ -115,7 +100,9 @@ def load_blueprint_catalog(root: Path) -> BlueprintCatalog:
         seen_ids.add(manifest.blueprint_id)
         manifests.append(manifest)
 
-    return BlueprintCatalog(tuple(sorted(manifests, key=lambda item: item.blueprint_id)))
+    catalog = BlueprintCatalog(tuple(sorted(manifests, key=lambda item: item.blueprint_id)))
+    _validate_ordering_references(catalog)
+    return catalog
 
 
 def _load_json_object(path: Path) -> dict[str, object]:
@@ -140,15 +127,21 @@ def _load_json_object(path: Path) -> dict[str, object]:
 
 
 def _parse_manifest(record: dict[str, object], directory: Path) -> BlueprintManifest:
-    if set(record) != _MANIFEST_FIELDS:
-        unexpected = sorted(set(record) - _MANIFEST_FIELDS)
-        missing = sorted(_MANIFEST_FIELDS - set(record))
+    raw_schema_version = record.get("schema_version")
+    if (
+        not isinstance(raw_schema_version, int)
+        or isinstance(raw_schema_version, bool)
+        or raw_schema_version != BLUEPRINT_SCHEMA_VERSION
+    ):
+        raise BlueprintCatalogError("Unsupported blueprint schema version.")
+    expected_fields = _V2_MANIFEST_FIELDS
+    if set(record) != expected_fields:
+        unexpected = sorted(set(record) - expected_fields)
+        missing = sorted(expected_fields - set(record))
         raise BlueprintCatalogError(
             f"Blueprint manifest fields do not match the schema; missing={missing}, "
             f"unexpected={unexpected}."
         )
-    if record["schema_version"] != BLUEPRINT_SCHEMA_VERSION:
-        raise BlueprintCatalogError("Unsupported blueprint schema version.")
 
     blueprint_id = _required_string(record, "id")
     version = _required_string(record, "version")
@@ -157,10 +150,7 @@ def _parse_manifest(record: dict[str, object], directory: Path) -> BlueprintMani
     if not _VERSION_PATTERN.fullmatch(version):
         raise BlueprintCatalogError("Blueprint version must use numeric semantic versioning.")
 
-    try:
-        stage = ApplicationStage(_required_string(record, "stage"))
-    except ValueError as error:
-        raise BlueprintCatalogError("Blueprint application stage is invalid.") from error
+    after = _string_tuple(record, "after")
 
     variables = record["variables"]
     contributions = record["contributions"]
@@ -175,10 +165,11 @@ def _parse_manifest(record: dict[str, object], directory: Path) -> BlueprintMani
     files = _parse_files(record["files"])
     return BlueprintManifest(
         blueprint_id=blueprint_id,
+        schema_version=raw_schema_version,
         version=version,
-        stage=stage,
         provides=_string_tuple(record, "provides", require_nonempty=True),
         requires=_string_tuple(record, "requires"),
+        after=after,
         conflicts=_string_tuple(record, "conflicts"),
         files=files,
         variables=tuple(sorted(variables)),
@@ -187,6 +178,16 @@ def _parse_manifest(record: dict[str, object], directory: Path) -> BlueprintMani
         validations=_string_tuple(record, "validations"),
         directory=directory,
     )
+
+
+def _validate_ordering_references(catalog: BlueprintCatalog) -> None:
+    blueprint_ids = {manifest.blueprint_id for manifest in catalog.manifests}
+    for manifest in catalog.manifests:
+        unknown = set(manifest.after).difference(blueprint_ids)
+        if unknown:
+            raise BlueprintCatalogError(
+                f"Blueprint {manifest.blueprint_id} has an unknown ordering dependency."
+            )
 
 
 def _parse_files(value: object) -> tuple[BlueprintFile, ...]:

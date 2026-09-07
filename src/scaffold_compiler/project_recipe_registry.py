@@ -171,13 +171,8 @@ def _parse_project_recipe(raw_recipe: Mapping[str, object]) -> ProjectRecipe:
         field="allowed_validations",
         duplicate_code="duplicate_validation_gate",
     )
-    allowed_blueprint_set = set(allowed_blueprints)
-    if not set(required_capabilities).issubset(allowed_blueprint_set):
-        _raise_recipe_error("required_capabilities", "unknown_capability")
-
     capability_rules = _parse_capability_rules(
         raw_recipe.get("capability_rules"),
-        allowed_capabilities=allowed_blueprint_set,
     )
     prerequisites = _parse_prerequisites(raw_recipe.get("prerequisites"))
 
@@ -201,8 +196,6 @@ def _parse_project_recipe(raw_recipe: Mapping[str, object]) -> ProjectRecipe:
 
 def _parse_capability_rules(
     raw_rules: object,
-    *,
-    allowed_capabilities: set[str],
 ) -> tuple[RecipeCapabilityRule, ...]:
     if not isinstance(raw_rules, list):
         _raise_recipe_error("capability_rules", "invalid_capability_rules")
@@ -227,8 +220,8 @@ def _parse_capability_rules(
             field="capability_rules",
             duplicate_code="duplicate_requested_capability",
         )
-        if not requested or not set(requested).issubset(allowed_capabilities):
-            _raise_recipe_error("capability_rules", "unknown_capability")
+        if not requested:
+            _raise_recipe_error("capability_rules", "empty_requested_capabilities")
         seen_conditions.add(canonical_conditions)
         rules.append(
             RecipeCapabilityRule(
@@ -305,9 +298,6 @@ _FASTAPI_RECIPE_DECLARATION: Final[Mapping[str, object]] = {
     "assembly_adapter": FASTAPI_ASSEMBLY_ADAPTER_KEY,
     "validation_adapter": FASTAPI_VALIDATION_ADAPTER_KEY,
     "required_capabilities": [
-        "project-quality",
-        "python-runtime",
-        "fastapi-http-api",
         "final-project-assembly",
     ],
     "capability_rules": [

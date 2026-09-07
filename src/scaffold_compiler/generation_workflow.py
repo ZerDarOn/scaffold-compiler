@@ -264,12 +264,13 @@ def _selected_blueprint_digest(
         records.append(
             {
                 "blueprint_id": manifest.blueprint_id,
+                "schema_version": manifest.schema_version,
+                "after": manifest.after,
                 "conflicts": manifest.conflicts,
                 "contributions": manifest.contributions_json,
                 "files": files,
                 "provides": manifest.provides,
                 "requires": manifest.requires,
-                "stage": manifest.stage.value,
                 "validations": manifest.validations,
                 "variables": manifest.variables_json,
                 "version": manifest.version,

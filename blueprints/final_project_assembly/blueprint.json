@@ -1,1 +1,1 @@
-{"conflicts":[],"contributions":{},"files":[],"id":"final-project-assembly","provides":["final-project-assembly"],"requires":["fastapi-http-api"],"schema_version":1,"stage":"final-project-assembly","validations":[],"variables":{},"version":"1.0.0"}
+{"after":["docker-delivery","postgres-docker-integration","postgres-persistence"],"conflicts":[],"contributions":{},"files":[],"id":"final-project-assembly","provides":["final-project-assembly"],"requires":["fastapi-http-api"],"schema_version":2,"validations":[],"variables":{},"version":"1.0.0"}

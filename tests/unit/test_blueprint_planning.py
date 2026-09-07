@@ -13,13 +13,17 @@ from scaffold_compiler.blueprint_catalog import (
 from scaffold_compiler.blueprint_plan_compiler import (
     PlanCompilationError,
     compile_blueprint_plan,
+    compile_recipe_blueprint_plan,
+)
+from scaffold_compiler.project_recipe_registry import (
+    FASTAPI_RECIPE_ID,
+    build_builtin_project_recipe_registry,
 )
 
 
 def manifest(
     blueprint_id: str,
     *,
-    stage: str,
     provides: tuple[str, ...],
     requires: tuple[str, ...] = (),
     conflicts: tuple[str, ...] = (),
@@ -27,10 +31,10 @@ def manifest(
     extra: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     record: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "id": blueprint_id,
         "version": "1.0.0",
-        "stage": stage,
+        "after": [],
         "provides": list(provides),
         "requires": list(requires),
         "conflicts": list(conflicts),
@@ -66,7 +70,6 @@ class BlueprintCatalogTests(unittest.TestCase):
                 {
                     "quality": manifest(
                         "quality",
-                        stage="project-quality",
                         provides=("quality",),
                         files=(".editorconfig",),
                     )
@@ -94,7 +97,6 @@ class BlueprintCatalogTests(unittest.TestCase):
                     {
                         f"invalid-{index}": manifest(
                             "invalid",
-                            stage="project-quality",
                             provides=("quality",),
                             extra=extra,
                         )
@@ -109,7 +111,6 @@ class BlueprintCatalogTests(unittest.TestCase):
             root = Path(directory)
             duplicate = manifest(
                 "duplicate",
-                stage="project-quality",
                 provides=("quality",),
             )
             write_catalog(root, {"first": duplicate, "second": duplicate})
@@ -132,20 +133,17 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
             {
                 "api": manifest(
                     "api",
-                    stage="fastapi-http-api",
                     provides=("api",),
                     requires=("python",),
                     files=("src/app/application.py",),
                 ),
                 "quality": manifest(
                     "quality",
-                    stage="project-quality",
                     provides=("quality",),
                     files=(".editorconfig",),
                 ),
                 "python": manifest(
                     "python",
-                    stage="python-runtime",
                     provides=("python",),
                     requires=("quality",),
                     files=(".python-version",),
@@ -171,7 +169,6 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
             {
                 "api": manifest(
                     "api",
-                    stage="fastapi-http-api",
                     provides=("api",),
                     requires=("python",),
                 )
@@ -187,13 +184,11 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
             {
                 "postgres": manifest(
                     "postgres",
-                    stage="postgres-persistence",
                     provides=("postgres",),
                     conflicts=("sqlite",),
                 ),
                 "sqlite": manifest(
                     "sqlite",
-                    stage="postgres-persistence",
                     provides=("sqlite",),
                 ),
             },
@@ -211,13 +206,11 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
             {
                 "a": manifest(
                     "a",
-                    stage="project-quality",
                     provides=("a",),
                     requires=("b",),
                 ),
                 "b": manifest(
                     "b",
-                    stage="project-quality",
                     provides=("b",),
                     requires=("a",),
                 ),
@@ -227,26 +220,25 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
         with self.assertRaisesRegex(PlanCompilationError, "cycle"):
             compile_blueprint_plan(load_blueprint_catalog(self.root), ("a",))
 
-    def test_rejects_dependency_on_a_later_stage(self) -> None:
+    def test_orders_dependencies_without_a_global_stage(self) -> None:
         write_catalog(
             self.root,
             {
                 "early": manifest(
                     "early",
-                    stage="project-quality",
                     provides=("early",),
                     requires=("late",),
                 ),
                 "late": manifest(
                     "late",
-                    stage="python-runtime",
                     provides=("late",),
                 ),
             },
         )
 
-        with self.assertRaisesRegex(PlanCompilationError, "stage"):
-            compile_blueprint_plan(load_blueprint_catalog(self.root), ("early",))
+        plan = compile_blueprint_plan(load_blueprint_catalog(self.root), ("early",))
+
+        self.assertEqual(plan.blueprint_ids, ("late", "early"))
 
     def test_rejects_duplicate_output_file_ownership(self) -> None:
         write_catalog(
@@ -254,13 +246,11 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
             {
                 "first": manifest(
                     "first",
-                    stage="project-quality",
                     provides=("first",),
                     files=("README.md",),
                 ),
                 "second": manifest(
                     "second",
-                    stage="python-runtime",
                     provides=("second",),
                     requires=("first",),
                     files=("README.md",),
@@ -275,12 +265,10 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
         records = {
             "zulu": manifest(
                 "zulu",
-                stage="project-quality",
                 provides=("zulu",),
             ),
             "alpha": manifest(
                 "alpha",
-                stage="project-quality",
                 provides=("alpha",),
             ),
         }
@@ -297,6 +285,7 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
     def test_bundled_catalog_compiles_all_four_v1_combinations(self) -> None:
         catalog_root = Path(__file__).parents[2] / "blueprints"
         catalog = load_blueprint_catalog(catalog_root)
+        recipe = build_builtin_project_recipe_registry().get(FASTAPI_RECIPE_ID)
         combinations = (
             (
                 ("final-project-assembly",),
@@ -343,7 +332,7 @@ class BlueprintPlanCompilerTests(unittest.TestCase):
 
         for requested, expected_blueprints in combinations:
             with self.subTest(requested=requested):
-                plan = compile_blueprint_plan(catalog, requested)
+                plan = compile_recipe_blueprint_plan(catalog, recipe, requested)
                 self.assertEqual(plan.blueprint_ids, expected_blueprints)
 
 

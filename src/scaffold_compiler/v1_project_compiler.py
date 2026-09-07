@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 
 from scaffold_compiler.blueprint_catalog import BlueprintCatalog, load_blueprint_catalog
-from scaffold_compiler.blueprint_plan_compiler import GenerationPlan, compile_blueprint_plan
+from scaffold_compiler.blueprint_plan_compiler import (
+    GenerationPlan,
+    compile_recipe_blueprint_plan,
+)
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     GeneratedCandidateFile,
@@ -21,6 +24,10 @@ from scaffold_compiler.project_configuration import (
     ContainerChoice,
     DatabaseChoice,
     ProjectConfiguration,
+)
+from scaffold_compiler.project_recipe_registry import (
+    FASTAPI_RECIPE_ID,
+    build_builtin_project_recipe_registry,
 )
 from scaffold_compiler.strict_template_renderer import render_strict_template
 
@@ -61,7 +68,8 @@ def compile_v1_plan(
         and configuration.container is ContainerChoice.DOCKER
     ):
         requested.append("postgres-docker-integration")
-    return catalog, compile_blueprint_plan(catalog, tuple(requested))
+    recipe = build_builtin_project_recipe_registry().get(FASTAPI_RECIPE_ID)
+    return catalog, compile_recipe_blueprint_plan(catalog, recipe, tuple(requested))
 
 
 def materialize_v1_candidate(
