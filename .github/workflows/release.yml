@@ -95,9 +95,16 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_VERSION: ${{ needs.build.outputs.release-version }}
         run: |
-          gh release create "$env:GITHUB_REF_NAME" `
-            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip#Disposable capsule (ZIP)" `
-            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip.sha256#SHA-256 checksum" `
-            --verify-tag `
-            --generate-notes `
-            --title "Scaffold Compiler $env:RELEASE_VERSION"
+          $arguments = @(
+            $env:GITHUB_REF_NAME
+            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip#Disposable capsule (ZIP)"
+            "dist/scaffold-compiler-$env:RELEASE_VERSION.zip.sha256#SHA-256 checksum"
+            "--verify-tag"
+            "--generate-notes"
+            "--title"
+            "Scaffold Compiler $env:RELEASE_VERSION"
+          )
+          if ($env:RELEASE_VERSION -match '(?i)(?:a|b|rc|dev)') {
+            $arguments += "--prerelease"
+          }
+          gh release create @arguments

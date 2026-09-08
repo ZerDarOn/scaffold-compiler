@@ -80,6 +80,7 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("gh release create", release)
         self.assertIn("--verify-tag", release)
         self.assertIn("--generate-notes", release)
+        self.assertIn("--prerelease", release)
         self.assertIn("github.ref_type == 'tag'", release)
         self.assertIn("GH_TOKEN: ${{ github.token }}", release)
         self.assertIn("GH_REPO: ${{ github.repository }}", release)
