@@ -125,8 +125,11 @@ ADR-GO-2
 
 ## 6. 当前状态
 
-- Done：Tasks 1.1–4.1；Go 配方、严格配置、两个蓝图、装配/验证适配器、问卷、工具发现和真实胶囊全链路均已实现。
+- Done：Tasks 1.1–4.2；Go 配方、严格配置、两个蓝图、装配/验证适配器、问卷、工具发现、真实胶囊全链路和候选发布均已完成。
 - Tests：本地全量为 288 passed、4 skipped、245 subtests passed；Go 真实 `init → preview → gofmt/test/build/run → Finalize → self-cleanup` 通过。
-- Next：Task 4.2，等待固定 Go 1.22.12 的 Windows/Ubuntu CI 后发布 `v2.1.0-rc.1`。
+- CI：主分支 quality `34205711908` 在固定 Go 1.22.12 的 Ubuntu/Windows 与 Linux 四种真实发布组合上全部通过；标签 release-capsule `34206043819` 的五个任务全部通过。
+- Release：`v2.1.0-rc.1` 已作为 prerelease 发布，胶囊 SHA-256 为 `4c07c3a2dbc24d9c818b57c64588d294129f43fca2bea3b2cf7a09a7574038c4`。
+- Review：无剩余中高等级发现；Windows 8.3 临时路径造成的测试误报已通过规范化 Path 断言修复并由 Windows CI 验证。
+- Next：保留 `v2.1.0-rc.1` 观察窗口；没有新缺陷时再单独评审并发布 V2.1 stable。
 - Debt：生成项目的 CI 使用 Go 1.22.x；编译器仓库 CI 固定 Go 1.22.12，后续升级需显式评审。
 - Rollback point：`v2.0.0` 正式标签与发布资产不移动。
