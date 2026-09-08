@@ -38,7 +38,10 @@ class InteractiveConfigurationTests(unittest.TestCase):
             self.assertEqual(payload["schema_version"], 2)
             self.assertEqual(payload["recipe"], "python-fastapi-service")
             self.assertEqual(payload["project_name"], "Orders API")
-            self.assertEqual(payload["target_directory"], (root / "orders").as_posix())
+            self.assertEqual(
+                payload["target_directory"],
+                (root / "orders").resolve(strict=False).as_posix(),
+            )
             self.assertEqual(
                 payload["answers"],
                 {"database": "postgres", "delivery": "docker", "package_name": "orders_api"},
