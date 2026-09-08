@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -27,6 +28,50 @@ class SuccessfulRunApplication:
 
 
 class ReleaseEntryTests(unittest.TestCase):
+    def test_default_application_previews_legacy_and_v2_fastapi_through_generic_cli(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "delivery"
+            config_path = root / "project.json"
+            previews: list[dict[str, object]] = []
+            configurations = (
+                {
+                    "container": "none",
+                    "database": "none",
+                    "package_name": "example",
+                    "project_name": "Example API",
+                    "target_directory": str(target),
+                },
+                {
+                    "answers": {
+                        "database": "none",
+                        "delivery": "none",
+                        "package_name": "example",
+                    },
+                    "project_name": "Example API",
+                    "recipe": "python-fastapi-service",
+                    "schema_version": 2,
+                    "target_directory": str(target),
+                },
+            )
+
+            for configuration in configurations:
+                config_path.write_text(json.dumps(configuration), encoding="utf-8")
+                stdout = io.StringIO()
+                exit_code = main(
+                    ["preview", "--config", str(config_path)],
+                    entry_path=root / "source-entry.py",
+                    stdout=stdout,
+                    stderr=io.StringIO(),
+                    environment={},
+                )
+                self.assertEqual(exit_code, 0)
+                previews.append(json.loads(stdout.getvalue()))
+
+            self.assertEqual(previews[0], previews[1])
+            self.assertEqual(previews[0]["recipe"], "python-fastapi-service")
+            self.assertEqual(previews[0]["recipe_version"], "1.0.0")
+
     def test_successful_packaged_run_arms_external_cleanup_before_reporting_success(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

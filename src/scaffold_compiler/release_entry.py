@@ -11,6 +11,9 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TextIO, cast
 
+from scaffold_compiler.builtin_project_application import (
+    build_builtin_project_command_application,
+)
 from scaffold_compiler.capsule_package import (
     CapsuleCleanupSupervisor,
     CapsuleOwnershipError,
@@ -20,7 +23,6 @@ from scaffold_compiler.capsule_package import (
     write_capsule_cleanup_journal,
 )
 from scaffold_compiler.command_line_interface import ScaffoldCommandService, run_command_line
-from scaffold_compiler.v1_command_application import V1CommandApplication
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +70,7 @@ def main(
             return 1
         runtime_root = capsule.root if capsule is not None else Path(__file__).parents[2]
         try:
-            selected_application = V1CommandApplication(
+            selected_application = build_builtin_project_command_application(
                 catalog_root=runtime_root / "blueprints",
                 working_directory=Path.cwd(),
                 home_directory=Path.home(),

@@ -21,6 +21,7 @@ from scaffold_compiler.central_project_file_assembly import (
     parse_blueprint_contribution,
 )
 from scaffold_compiler.project_assembly_adapter_registry import (
+    ProjectAssemblyAdapterRegistry,
     ProjectAssemblyRequest,
     assemble_project_candidate,
     build_project_assembly_adapter_registry,
@@ -99,10 +100,15 @@ def materialize_v1_candidate(
         workspace=workspace,
         catalog_root=resolved_catalog_root,
     )
-    registry = build_project_assembly_adapter_registry(
+    registry = build_fastapi_project_assembly_adapter_registry()
+    return assemble_project_candidate(request, registry)
+
+
+def build_fastapi_project_assembly_adapter_registry() -> ProjectAssemblyAdapterRegistry:
+    """Return the trusted FastAPI assembly adapter registration."""
+    return build_project_assembly_adapter_registry(
         ((FASTAPI_ASSEMBLY_ADAPTER_KEY, _assemble_fastapi_candidate),)
     )
-    return assemble_project_candidate(request, registry)
 
 
 def _assemble_fastapi_candidate(

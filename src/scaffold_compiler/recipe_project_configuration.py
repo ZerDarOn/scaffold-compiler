@@ -114,10 +114,15 @@ def parse_builtin_recipe_project_configuration(
     return parse_recipe_project_configuration(
         raw_configuration,
         registry=build_builtin_project_recipe_registry(),
-        answer_normalizers={FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers},
+        answer_normalizers=build_builtin_answer_normalizers(),
         working_directory=working_directory,
         home_directory=home_directory,
     )
+
+
+def build_builtin_answer_normalizers() -> Mapping[str, AnswerNormalizer]:
+    """Return the statically imported answer normalizers shipped by the compiler."""
+    return {FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers}
 
 
 def convert_legacy_project_configuration(

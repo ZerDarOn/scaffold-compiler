@@ -360,6 +360,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 4.3｜CLI 兼容切换
 
+**状态：完成。**
+
 - Input：Task 4.2、V1/V2 配置格式。
 - Output：CLI 自动识别明确 schema；旧 V1 配置与命令输出保持兼容，preview 增加配方身份。
 - Risk：格式探测含糊或错误回退，使无效 V2 配置被当成 V1。
@@ -451,10 +453,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–3 与 Task 4.1–4.2；语言无关事务核心和配方驱动的 preview、run、inspect、discard 应用服务已完成，旧 V1 CLI 尚未切换。
-- Tests：本地全量回归为 236 passed、3 skipped、199 subtests passed；Task 4.2 新增配方身份预览、通用运行依赖绑定，以及原有精确 inspect/discard 服务复用覆盖。
-- Next：Task 4.3，在四组合与通用应用回归通过后，将 CLI 组合根切换到通用应用，同时保留旧 V1 配置格式和输出兼容。
+- Done：Phase 1–4 全部任务；可执行入口已切换到通用命令应用，FastAPI 专有运行时仅存在于受信内置组合根，旧 V1 配置继续兼容。
+- Tests：本地全量回归为 237 passed、3 skipped、200 subtests passed；CLI 回归证明旧 V1 与显式 V2 FastAPI 配置产生相同预览摘要，并显式报告配方 ID/版本。
+- Next：Task 5.1，为最小 C/CMake CLI 定义跨平台黄金项目文件树、标识符、严格警告和零残留失败测试。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：CLI 仍指向 V1 应用；可删除通用命令应用与生命周期入口，不影响 Phase 1–3 的配方边界。
+- Rollback point：单点将 release entry 恢复到 V1CommandApplication 即可撤销 CLI 切换；Phase 1–3 与通用应用代码可继续保留。
 
-Phase 4 generic application checkpoint complete. Proceed with the CLI compatibility switch?
+Phase 4 generic lifecycle and CLI checkpoint complete. Proceed with the C/CMake reference recipe?
