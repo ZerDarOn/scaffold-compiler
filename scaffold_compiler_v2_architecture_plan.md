@@ -471,10 +471,32 @@ C 配方使用同一公共封装，但答案属于自身：
 - Rollback：不创建正式标签；保留 V1 最新稳定 Release。
 - Flag：公开发布副作用，必须单独确认。
 
+### Phase 8：交互式配置入口
+
+#### Task 8.1｜受信任问卷与安全配置发布
+
+**状态：完成。**
+
+- Input：内置配方注册、schema 2 严格解析器和用户交互输入。
+- Output：`init --output` 为 FastAPI 与 CMake 收集答案，只发布已验证的规范配置。
+- Risk：问卷成为绕过严格解析器的新执行或配置入口。
+- Rollback：移除 `init` 路由与问卷注册，不影响手写配置、preview 或 run。
+- Acceptance：不覆盖现有文件；输入中断不留半成品；不创建目标或工作区；不触发胶囊自清理；问卷仅存在于受信任代码。
+
+#### Task 8.2｜真实胶囊全链路与 RC2
+
+**状态：完成。**
+
+- Input：带 `init` 的发布胶囊及两套参考配方。
+- Output：真实 `init → preview → run → self-cleanup` 验收与 `v2.0.0-rc.2` prerelease。
+- Risk：开发入口可用，但打包后提示被缓存、模块遗漏或跨平台路径语义不同。
+- Rollback：阻止标签发布；保留 rc.1。
+- Acceptance：Windows/Ubuntu 的 CMake 链路、Linux FastAPI 四组合、确定性资产构建和 prerelease 发布全部成功。
+
 ## 11. 状态快照
 
-- Done：Phase 1–7；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；C 工具链中断与发布后清理中断均有安全恢复路径；`v2.0.0-rc.1` 已作为 GitHub prerelease 发布。
-- Tests：本地全量为 268 passed、4 skipped；相关装配、适配器、Finalize 与恢复安全回归为 36 passed、20 subtests passed。标签发布 `release-capsule` run 34192475881 的 Ubuntu、Windows 核心质量、FastAPI Linux 四组合、确定性资产构建与 GitHub Release 发布全部成功。ZIP 的两次独立本地构建逐字节一致，SHA-256 为 `eb6a86b0ee5b126d9824f7b59827e3c99559bd6b7f440b6b4251fc14f4fc845b`。
+- Done：Phase 1–8；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；`init` 只生成严格配置，并已接入 FastAPI/CMake 的真实 `init → preview → run → self-cleanup` 验收；`v2.0.0-rc.2` 已作为 GitHub prerelease 发布。
+- Tests：本地全量为 275 passed、4 skipped、231 subtests passed；Ruff 与 mypy 全绿。标签发布 `release-capsule` run 34197774526 的 Ubuntu、Windows 核心质量、FastAPI Linux 四组合、确定性资产构建与 GitHub Release 发布全部成功。RC2 ZIP 的 SHA-256 为 `4ed010aaad1bc0ccc2171021a72f5d4768ab763876a46946e550989b6929c949`。
 - Next：收集 RC 使用反馈；只有在反馈与回归门禁通过后才评估 `v2.0.0` 稳定版。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；托管 Ubuntu/Windows 工具链已验证，具体 GCC/Clang/MSVC 最低版本仍待兼容矩阵冻结。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
