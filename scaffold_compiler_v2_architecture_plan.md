@@ -495,9 +495,9 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–8；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；`init` 只生成严格配置，并已接入 FastAPI/CMake 的真实 `init → preview → run → self-cleanup` 验收；`v2.0.0-rc.2` 已作为 GitHub prerelease 发布。
-- Tests：本地全量为 275 passed、4 skipped、231 subtests passed；Ruff 与 mypy 全绿。标签发布 `release-capsule` run 34197774526 的 Ubuntu、Windows 核心质量、FastAPI Linux 四组合、确定性资产构建与 GitHub Release 发布全部成功。RC2 ZIP 的 SHA-256 为 `4ed010aaad1bc0ccc2171021a72f5d4768ab763876a46946e550989b6929c949`。
-- Next：收集 RC 使用反馈；只有在反馈与回归门禁通过后才评估 `v2.0.0` 稳定版。
+- Done：Phase 1–8；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；`init` 只生成严格配置，并已接入 FastAPI/CMake 的真实 `init → preview → run → self-cleanup` 验收；公开 RC2 资产已通过独立下载、校验和用户视角烟雾测试；`v2.0.0` 已正式发布。
+- Tests：本地全量为 275 passed、4 skipped、231 subtests passed；Ruff 与 mypy 全绿。正式标签 `release-capsule` run 34200284101 的 Ubuntu、Windows 核心质量、FastAPI Linux 四组合、确定性资产构建与 GitHub Release 发布全部成功。正式 ZIP 的 SHA-256 为 `585fe7bc5679879ed6b0d2fb0812fcfc4d89e8a5bcb44f81e183915ef2ddd6a9`。
+- Next：V2 进入稳定维护；优先处理真实使用反馈和新增受信任配方，不扩大已发布的安全边界。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；托管 Ubuntu/Windows 工具链已验证，具体 GCC/Clang/MSVC 最低版本仍待兼容矩阵冻结。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 
