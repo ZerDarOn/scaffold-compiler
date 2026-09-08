@@ -112,7 +112,7 @@ class CMakeValidationExecutorTests(unittest.TestCase):
             )
             executable_name = "example_cli.exe" if os.name == "nt" else "example_cli"
             self.assertEqual(specifications[3].argv, (str(build_root / executable_name),))
-            self.assertTrue(all(item.cwd == candidate.root for item in specifications))
+            self.assertTrue(all(item.cwd == candidate.root.resolve() for item in specifications))
             self.assertTrue(all(item.output_limit_bytes == 65_536 for item in specifications))
             self.assertTrue(all(item.timeout_seconds > 0 for item in specifications))
             self.assertFalse(build_root.is_relative_to(candidate.root))

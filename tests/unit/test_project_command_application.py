@@ -213,7 +213,7 @@ class ProjectCommandApplicationTests(unittest.TestCase):
                 inspected = application.inspect(Path(".delivery.scaffold-failed-run"))
                 discarded = application.discard(Path(".delivery.scaffold-failed-run"))
 
-            expected = (root / ".delivery.scaffold-failed-run").absolute()
+            expected = root.resolve() / ".delivery.scaffold-failed-run"
             inspect_workspace.assert_called_once_with(expected)
             discard_workspace.assert_called_once_with(expected)
             self.assertEqual(inspected.exit_code, 0)
