@@ -7,6 +7,7 @@ project contains no generator, blueprint, journal, or run metadata.
 
 Latest stable release: [`v2.0.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.0.0).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
+Current prerelease: [`v2.1.0-rc.2`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.1.0-rc.2).
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
