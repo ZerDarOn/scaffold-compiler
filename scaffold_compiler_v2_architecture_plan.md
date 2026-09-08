@@ -299,6 +299,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 3.1｜通用装配适配器失败测试
 
+**状态：完成。**
+
 - Input：通用配置、配方计划、现有候选装配器。
 - Output：适配器唯一注册、答案类型边界、计划/配方绑定、输出所有权和未知适配器拒绝测试。
 - Risk：适配器绕过计划写入未声明文件。
@@ -306,6 +308,8 @@ C 配方使用同一公共封装，但答案属于自身：
 - Flag：TDD 失败测试。
 
 #### Task 3.2｜封装 FastAPI 装配实现
+
+**状态：完成。**
 
 - Input：Task 3.1、现有 FastAPI 集中装配与锁文件逻辑。
 - Output：FastAPI 受信装配适配器；旧编译函数委托新适配器后保持输出等价。
@@ -439,10 +443,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：V2 产品边界、七维风险、五项 ADR、24 个微任务，以及 Phase 1–2 的通用配置、受信配方注册、配方作用域规划和 FastAPI 蓝图 schema 2 迁移。
-- Tests：本地全量回归为 215 passed、3 skipped；配方边界、显式排序、稳定排序、跨配方拒绝和四种 FastAPI 组合均有契约覆盖。
-- Next：Task 3.1，先写通用装配适配器的注册、绑定和输出所有权失败测试。
+- Done：Phase 1–2 全部任务，以及 Task 3.1–3.2 的通用装配适配器边界和 FastAPI 装配委托。
+- Tests：本地全量回归为 221 passed、3 skipped；装配器重复/未知注册、配置与计划身份错配、候选摘要、文件 owner、文件元数据和未记录文件均有拒绝覆盖。
+- Next：Task 3.3，先写通用验证适配器的注册、必需门、候选不变性、超时和秘密处理失败测试。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：V1 CLI 仍使用旧配置入口，但规划已委托新配方规划器；可按 Phase 2 提交整体回退到 schema 1 与旧规划器。
+- Rollback point：V1 CLI 仍使用旧配置入口；规划与装配已分别委托新边界，可独立回退 Task 3.1–3.2 而保留 Phase 2。
 
-Phase 2 complete. Proceed with Phase 3?
+Phase 3 assembly checkpoint complete. Proceed with validation adapters?

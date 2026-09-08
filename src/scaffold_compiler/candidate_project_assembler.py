@@ -208,12 +208,20 @@ def calculate_candidate_digest(
                     f"Candidate contains an unexpected file: {relative_path}."
                 )
             content = path.read_bytes()
+            content_digest = hashlib.sha256(content).hexdigest()
+            if len(content) != owner_record.size or not hmac.compare_digest(
+                content_digest,
+                owner_record.sha256,
+            ):
+                raise CandidateChangedError(
+                    f"Candidate file metadata no longer matches: {relative_path}."
+                )
             actual_records.append(
                 {
                     "path": relative_path,
                     "owner": owner_record.owner,
                     "size": len(content),
-                    "sha256": hashlib.sha256(content).hexdigest(),
+                    "sha256": content_digest,
                 }
             )
     except OSError as error:

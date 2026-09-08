@@ -20,15 +20,22 @@ from scaffold_compiler.central_project_file_assembly import (
     assemble_central_project_files,
     parse_blueprint_contribution,
 )
+from scaffold_compiler.project_assembly_adapter_registry import (
+    ProjectAssemblyRequest,
+    assemble_project_candidate,
+    build_project_assembly_adapter_registry,
+)
 from scaffold_compiler.project_configuration import (
     ContainerChoice,
     DatabaseChoice,
     ProjectConfiguration,
 )
 from scaffold_compiler.project_recipe_registry import (
+    FASTAPI_ASSEMBLY_ADAPTER_KEY,
     FASTAPI_RECIPE_ID,
     build_builtin_project_recipe_registry,
 )
+from scaffold_compiler.recipe_project_configuration import RecipeProjectConfiguration
 from scaffold_compiler.strict_template_renderer import render_strict_template
 
 
@@ -80,8 +87,82 @@ def materialize_v1_candidate(
     plan: GenerationPlan,
     catalog_root: Path | None = None,
 ) -> CandidateAssemblyResult:
-    """Materialize one already-frozen V1 plan into its isolated workspace."""
+    """Delegate legacy FastAPI inputs through the trusted assembly boundary."""
     resolved_catalog_root = catalog_root or Path(__file__).parents[2] / "blueprints"
+    recipe = build_builtin_project_recipe_registry().get(FASTAPI_RECIPE_ID)
+    recipe_configuration = RecipeProjectConfiguration(
+        schema_version=2,
+        recipe_id=recipe.recipe_id,
+        recipe_version=recipe.version,
+        project_name=configuration.project_name,
+        target_directory=configuration.target_directory,
+        _answers_json=json.dumps(
+            {
+                "database": configuration.database.value,
+                "delivery": configuration.container.value,
+                "package_name": configuration.package_name,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+    )
+    request = ProjectAssemblyRequest(
+        configuration=recipe_configuration,
+        recipe=recipe,
+        catalog=catalog,
+        plan=plan,
+        workspace=workspace,
+        catalog_root=resolved_catalog_root,
+    )
+    registry = build_project_assembly_adapter_registry(
+        ((FASTAPI_ASSEMBLY_ADAPTER_KEY, _assemble_fastapi_candidate),)
+    )
+    return assemble_project_candidate(request, registry)
+
+
+def _assemble_fastapi_candidate(
+    request: ProjectAssemblyRequest,
+) -> CandidateAssemblyResult:
+    answers = request.configuration.answers
+    if set(answers) != {"database", "delivery", "package_name"}:
+        raise ValueError("FastAPI assembly answers do not match the trusted schema.")
+    package_name = answers["package_name"]
+    database = answers["database"]
+    delivery = answers["delivery"]
+    if (
+        not isinstance(package_name, str)
+        or not isinstance(database, str)
+        or not isinstance(delivery, str)
+    ):
+        raise ValueError("FastAPI assembly answers have invalid types.")
+    try:
+        legacy_configuration = ProjectConfiguration(
+            project_name=request.configuration.project_name,
+            package_name=package_name,
+            target_directory=request.configuration.target_directory,
+            database=DatabaseChoice(database),
+            container=ContainerChoice(delivery),
+        )
+    except ValueError as error:
+        raise ValueError("FastAPI assembly answers contain an unsupported choice.") from error
+    return _materialize_fastapi_candidate(
+        legacy_configuration,
+        request.workspace,
+        catalog=request.catalog,
+        plan=request.plan,
+        catalog_root=request.catalog_root,
+    )
+
+
+def _materialize_fastapi_candidate(
+    configuration: ProjectConfiguration,
+    workspace: Path,
+    *,
+    catalog: BlueprintCatalog,
+    plan: GenerationPlan,
+    catalog_root: Path,
+) -> CandidateAssemblyResult:
+    """Materialize one normalized FastAPI request into its isolated workspace."""
 
     values = {
         "project_name": configuration.project_name,
@@ -119,7 +200,7 @@ def materialize_v1_candidate(
         GeneratedCandidateFile(
             path="uv.lock",
             owner="final-project-assembly",
-            content=_render_lock_file(resolved_catalog_root, configuration),
+            content=_render_lock_file(catalog_root, configuration),
         )
     )
     return assemble_candidate_project(
