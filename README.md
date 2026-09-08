@@ -19,6 +19,9 @@ Ninja, CTest, and a platform C compiler on both Linux and Windows CI.
 
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
+For practical operation, see the [`docs/user_guide.md`](docs/user_guide.md). Maintainers adding a
+language or project family should follow
+[`docs/trusted_recipe_authoring.md`](docs/trusted_recipe_authoring.md).
 
 ## Prerequisites
 
