@@ -350,7 +350,7 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 4.2｜通用命令应用最小实现
 
-**状态：进行中。**
+**状态：完成。**
 
 - Input：Task 4.1 与现有生成工作流、Finalize 事务器。
 - Output：配方驱动的 preview、run、inspect、discard 编排；复用同一目标锁、journal、Finalize 和清理实现。
@@ -451,10 +451,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–3 与 Task 4.1；现有事务核心已抽取为语言无关回调边界，类 C 配方契约证明编排不读取 package、database、container，旧 V1 包装和四组合保持兼容。
-- Tests：本地全量回归为 233 passed、3 skipped、198 subtests passed；Phase 4 新增非 Python 配方全事务、摘要绑定、身份错配无副作用和 run ID 路径逃逸拒绝覆盖。
-- Next：Task 4.2，基于通用事务入口完成配方驱动的 preview、run、inspect、discard 应用服务，并保持恢复与删除范围由核心控制。
+- Done：Phase 1–3 与 Task 4.1–4.2；语言无关事务核心和配方驱动的 preview、run、inspect、discard 应用服务已完成，旧 V1 CLI 尚未切换。
+- Tests：本地全量回归为 236 passed、3 skipped、199 subtests passed；Task 4.2 新增配方身份预览、通用运行依赖绑定，以及原有精确 inspect/discard 服务复用覆盖。
+- Next：Task 4.3，在四组合与通用应用回归通过后，将 CLI 组合根切换到通用应用，同时保留旧 V1 配置格式和输出兼容。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：CLI 仍指向 V1 应用；可删除通用生命周期入口并让 V1 包装恢复内联事务，不影响 Phase 1–3 的配方边界。
+- Rollback point：CLI 仍指向 V1 应用；可删除通用命令应用与生命周期入口，不影响 Phase 1–3 的配方边界。
 
-Phase 4 lifecycle contract checkpoint complete. Proceed with the generic command application?
+Phase 4 generic application checkpoint complete. Proceed with the CLI compatibility switch?
