@@ -318,6 +318,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 3.3｜通用验证适配器失败测试
 
+**状态：完成。**
+
 - Input：现有受控进程、验证报告、Docker 生命周期和 ADR-04。
 - Output：验证门唯一提供者、必需门缺失、未知门、秘密输入、超时和候选改变后的失败测试。
 - Risk：配方把声明式门名称变成任意命令，或必需门被 SKIPPED 后仍通过。
@@ -325,6 +327,8 @@ C 配方使用同一公共封装，但答案属于自身：
 - Flag：外部进程与秘密；TDD 失败测试。
 
 #### Task 3.4｜封装 FastAPI 验证实现
+
+**状态：完成。**
 
 - Input：Task 3.3、现有 V1 验证器。
 - Output：FastAPI 受信验证适配器，复用现有 uv、PostgreSQL 与 Docker 实现。
@@ -443,10 +447,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–2 全部任务，以及 Task 3.1–3.2 的通用装配适配器边界和 FastAPI 装配委托。
-- Tests：本地全量回归为 221 passed、3 skipped；装配器重复/未知注册、配置与计划身份错配、候选摘要、文件 owner、文件元数据和未记录文件均有拒绝覆盖。
-- Next：Task 3.3，先写通用验证适配器的注册、必需门、候选不变性、超时和秘密处理失败测试。
+- Done：Phase 1–3 全部任务；FastAPI 的规划、装配与验证均已委托配方驱动的受信边界，旧 V1 入口保持兼容。
+- Tests：本地全量回归为 230 passed、3 skipped、197 subtests passed；新增聚焦回归覆盖验证适配器重复/未知注册、门提供者冲突、报告绑定、必需门、候选篡改、秘密日志和 FastAPI 运行时委托。
+- Next：Task 4.1，先用契约测试证明通用生命周期编排不读取 package、database、container 等 FastAPI 专有字段。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：V1 CLI 仍使用旧配置入口；规划与装配已分别委托新边界，可独立回退 Task 3.1–3.2 而保留 Phase 2。
+- Rollback point：V1 CLI 仍使用旧配置入口；规划、装配与验证已分别委托新边界，可独立回退 Phase 3 而保留 Phase 2。
 
-Phase 3 assembly checkpoint complete. Proceed with validation adapters?
+Phase 3 trusted adapter checkpoint complete. Proceed with generic lifecycle wiring?

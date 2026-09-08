@@ -35,7 +35,7 @@ from scaffold_compiler.project_recipe_registry import (
     FASTAPI_RECIPE_ID,
     build_builtin_project_recipe_registry,
 )
-from scaffold_compiler.recipe_project_configuration import RecipeProjectConfiguration
+from scaffold_compiler.recipe_project_configuration import convert_legacy_project_configuration
 from scaffold_compiler.strict_template_renderer import render_strict_template
 
 
@@ -90,22 +90,7 @@ def materialize_v1_candidate(
     """Delegate legacy FastAPI inputs through the trusted assembly boundary."""
     resolved_catalog_root = catalog_root or Path(__file__).parents[2] / "blueprints"
     recipe = build_builtin_project_recipe_registry().get(FASTAPI_RECIPE_ID)
-    recipe_configuration = RecipeProjectConfiguration(
-        schema_version=2,
-        recipe_id=recipe.recipe_id,
-        recipe_version=recipe.version,
-        project_name=configuration.project_name,
-        target_directory=configuration.target_directory,
-        _answers_json=json.dumps(
-            {
-                "database": configuration.database.value,
-                "delivery": configuration.container.value,
-                "package_name": configuration.package_name,
-            },
-            separators=(",", ":"),
-            sort_keys=True,
-        ),
-    )
+    recipe_configuration = convert_legacy_project_configuration(configuration)
     request = ProjectAssemblyRequest(
         configuration=recipe_configuration,
         recipe=recipe,

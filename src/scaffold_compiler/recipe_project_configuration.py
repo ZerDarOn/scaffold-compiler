@@ -12,6 +12,7 @@ from typing import Final, NoReturn, TypeAlias, cast
 
 from scaffold_compiler.project_configuration import (
     ConfigurationValidationError,
+    ProjectConfiguration,
     normalize_project_name,
     normalize_python_package_name,
     normalize_target_directory,
@@ -119,6 +120,25 @@ def parse_builtin_recipe_project_configuration(
     )
 
 
+def convert_legacy_project_configuration(
+    configuration: ProjectConfiguration,
+    *,
+    registry: ProjectRecipeRegistry | None = None,
+) -> RecipeProjectConfiguration:
+    """Convert one validated legacy FastAPI configuration to the canonical envelope."""
+    recipe = _get_recipe(registry or build_builtin_project_recipe_registry(), FASTAPI_RECIPE_ID)
+    return _build_configuration(
+        recipe=recipe,
+        project_name=configuration.project_name,
+        target_directory=configuration.target_directory,
+        answers={
+            "database": configuration.database.value,
+            "delivery": configuration.container.value,
+            "package_name": configuration.package_name,
+        },
+    )
+
+
 def _parse_v2_configuration(
     raw_configuration: Mapping[str, object],
     *,
@@ -195,17 +215,7 @@ def _parse_legacy_fastapi_configuration(
         working_directory=working_directory,
         home_directory=home_directory,
     )
-    recipe = _get_recipe(registry, FASTAPI_RECIPE_ID)
-    return _build_configuration(
-        recipe=recipe,
-        project_name=legacy.project_name,
-        target_directory=legacy.target_directory,
-        answers={
-            "database": legacy.database.value,
-            "delivery": legacy.container.value,
-            "package_name": legacy.package_name,
-        },
-    )
+    return convert_legacy_project_configuration(legacy, registry=registry)
 
 
 def _normalize_fastapi_answers(

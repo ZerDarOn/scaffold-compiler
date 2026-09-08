@@ -7,7 +7,10 @@ from tempfile import TemporaryDirectory
 from typing import cast
 from unittest.mock import patch
 
-from scaffold_compiler.candidate_project_assembler import CandidateAssemblyResult
+from scaffold_compiler.candidate_project_assembler import (
+    CandidateAssemblyResult,
+    calculate_candidate_digest,
+)
 from scaffold_compiler.command_line_interface import CommandOutcome
 from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceDiscardResult,
@@ -54,17 +57,17 @@ class V1CommandApplicationTests(unittest.TestCase):
                 candidate = CandidateAssemblyResult(
                     root=candidate_root,
                     files=(),
-                    digest="d" * 64,
+                    digest=calculate_candidate_digest(candidate_root, ()),
                     plan_digest="c" * 64,
                 )
                 with patch(
-                    "scaffold_compiler.v1_command_application.execute_v1_validation"
+                    "scaffold_compiler.fastapi_project_validation_adapter.execute_v1_validation"
                 ) as execute_validation:
                     execute_validation.return_value = ValidationReport(
                         configuration_digest="a" * 64,
                         blueprint_digest="b" * 64,
                         plan_digest="c" * 64,
-                        candidate_digest="d" * 64,
+                        candidate_digest=candidate.digest,
                         checks=(ValidationCheck("pytest", ValidationStatus.PASS, True),),
                     )
                     validator(

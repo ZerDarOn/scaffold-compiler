@@ -15,6 +15,10 @@ from scaffold_compiler.failed_workspace_recovery import (
     discard_failed_workspace,
     inspect_failed_workspace,
 )
+from scaffold_compiler.fastapi_project_validation_adapter import (
+    FastApiValidationRuntime,
+    build_fastapi_project_validation_adapter_registration,
+)
 from scaffold_compiler.generation_workflow import (
     CompletedGeneration,
     execute_non_interactive_generation,
@@ -24,8 +28,19 @@ from scaffold_compiler.project_configuration import (
     ProjectConfiguration,
     parse_project_configuration,
 )
+from scaffold_compiler.project_recipe_registry import (
+    FASTAPI_RECIPE_ID,
+    build_builtin_project_recipe_registry,
+)
+from scaffold_compiler.project_validation_adapter_registry import (
+    ProjectValidationRequest,
+    build_project_validation_adapter_registry,
+    execute_project_validation,
+)
+from scaffold_compiler.recipe_project_configuration import (
+    convert_legacy_project_configuration,
+)
 from scaffold_compiler.v1_project_compiler import compile_v1_plan
-from scaffold_compiler.v1_validation_executor import execute_v1_validation
 from scaffold_compiler.validation import ValidationReport, ValidationStatus
 
 LOGGER = logging.getLogger(__name__)
@@ -77,6 +92,15 @@ class V1CommandApplication:
             if configuration.database is DatabaseChoice.POSTGRES
             else None
         )
+        recipe_registry = build_builtin_project_recipe_registry()
+        recipe = recipe_registry.get(FASTAPI_RECIPE_ID)
+        recipe_configuration = convert_legacy_project_configuration(
+            configuration,
+            registry=recipe_registry,
+        )
+        validation_registry = build_project_validation_adapter_registry(
+            (build_fastapi_project_validation_adapter_registration(),)
+        )
 
         def validator(
             candidate: CandidateAssemblyResult,
@@ -85,22 +109,28 @@ class V1CommandApplication:
             required_validations: tuple[str, ...],
             validation_environment: Path,
         ) -> ValidationReport:
-            report = execute_v1_validation(
-                candidate,
-                configuration_digest,
-                blueprint_digest,
-                required_validations,
-                package_name=configuration.package_name,
-                uv_executable=uv_executable,
-                validation_environment=validation_environment,
-                database_url=database_url,
-                run_id=run_id,
-                docker_executable=self._docker_executable,
-                forbidden_absolute_paths=(
-                    self._catalog_root.parent,
-                    candidate.root.parent,
+            report = execute_project_validation(
+                ProjectValidationRequest(
+                    configuration=recipe_configuration,
+                    recipe=recipe,
+                    candidate=candidate,
+                    configuration_digest=configuration_digest,
+                    blueprint_digest=blueprint_digest,
+                    required_validations=required_validations,
+                    validation_environment=validation_environment,
+                    runtime_context=FastApiValidationRuntime(
+                        package_name=configuration.package_name,
+                        uv_executable=uv_executable,
+                        database_url=database_url,
+                        run_id=run_id,
+                        docker_executable=self._docker_executable,
+                        forbidden_absolute_paths=(
+                            self._catalog_root.parent,
+                            candidate.root.parent,
+                        ),
+                    ),
                 ),
-                secrets=(),
+                validation_registry,
             )
             incomplete = tuple(
                 check.name

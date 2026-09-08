@@ -137,6 +137,12 @@ _VALIDATION_ORDER: Final = {
         )
     )
 }
+V1_VALIDATION_REPORT_GATES: Final = (
+    "static-safety",
+    "locked-install",
+    *_VALIDATION_ORDER,
+    "docker-cleanup",
+)
 
 ValidationProcessRunner = Callable[[ControlledProcessSpec], ControlledProcessResult]
 
