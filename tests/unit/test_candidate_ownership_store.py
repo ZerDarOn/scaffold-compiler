@@ -94,6 +94,20 @@ class CandidateOwnershipStoreTests(unittest.TestCase):
             with self.assertRaises(CandidateOwnershipCorruptionError):
                 store.load(root)
 
+    def test_cleanup_load_accepts_only_a_partial_manifest_owned_candidate(self) -> None:
+        with TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve() / ".delivery.scaffold-run"
+            workspace.mkdir()
+            candidate = make_candidate(workspace)
+            store = CandidateOwnershipStore(workspace / "candidate_ownership.json")
+            store.save(candidate)
+            (candidate.root / "README.md").unlink()
+
+            with self.assertRaises(CandidateOwnershipCorruptionError):
+                store.load(workspace)
+
+            self.assertEqual(store.load_for_cleanup(workspace), candidate)
+
 
 if __name__ == "__main__":
     unittest.main()

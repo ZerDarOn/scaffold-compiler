@@ -66,6 +66,7 @@ jobs:
           tests/integration
           tests/golden_projects
           tests/acceptance/test_cmake_disposable_release_workflow.py
+          tests/acceptance/test_cmake_failed_release_recovery.py
           tests/acceptance/test_fastapi_v1_v2_equivalence.py
           tests/acceptance/test_four_combination_workflow.py
           tests/acceptance/test_failed_release_recovery_workflow.py

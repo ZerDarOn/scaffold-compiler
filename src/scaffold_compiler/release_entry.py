@@ -99,7 +99,7 @@ def main(
     )
     if exit_code != 0:
         return exit_code
-    if capsule is not None and selected_arguments[:1] == ["run"]:
+    if capsule is not None and selected_arguments[:1] in (["run"], ["cleanup"]):
         try:
             _arm_capsule_cleanup(capsule)
         except (OSError, ValueError):

@@ -1,11 +1,11 @@
 # Scaffold Compiler
 
-Scaffold Compiler compiles a constrained configuration and built-in blueprints into a verified,
-standalone FastAPI project. It is a disposable generator, not a long-term project manager: after a
-successful release run, an external supervisor removes the generator capsule. The finalized project
-contains no generator, blueprint, journal, or run metadata.
+Scaffold Compiler compiles a constrained configuration and trusted built-in recipe blueprints into
+a verified, standalone project. It is a disposable generator, not a long-term project manager:
+after a successful release run, an external supervisor removes the generator capsule. The finalized
+project contains no generator, blueprint, journal, or run metadata.
 
-V1 deliberately supports only four combinations:
+The FastAPI recipe retains the four V1-compatible combinations:
 
 | Database | Delivery | Status |
 |---|---|---|
@@ -13,6 +13,9 @@ V1 deliberately supports only four combinations:
 | PostgreSQL | Local | Runtime-verified |
 | None | Docker | Runtime-verified on Linux CI |
 | PostgreSQL | Docker Compose | Runtime-verified on Linux CI |
+
+The second reference recipe generates a C11/CMake CLI project and is runtime-verified with CMake,
+Ninja, CTest, and a platform C compiler on both Linux and Windows CI.
 
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
@@ -91,6 +94,20 @@ Discard first validates the session binding, workspace name, allowed root entrie
 hashes, and validation-environment marker. Any changed, linked, extra, or ambiguous entry blocks
 cleanup. Committed, cleanup-pending, and ambiguous sessions are never discardable.
 
+If publication succeeded but temporary cleanup was interrupted, `run` reports a cleanup-pending
+workspace. Retry only that cleanup with a separate confirmation word:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz cleanup `
+  --workspace .\.example-api.scaffold-<run-id> `
+  --confirm CLEANUP
+```
+
+`cleanup` first proves that the published project still matches the sealed candidate byte for byte,
+then removes only manifest-owned temporary entries. It never deletes or rolls back the published
+project. A changed target, unknown workspace entry, link, invalid report, or invalid ownership marker
+causes a zero-delete refusal. Successful recovery also arms the capsule's manifest-bound supervisor.
+
 ## Finalize and self-cleanup semantics
 
 The command assembles and validates a candidate in a hidden, run-owned sibling workspace. Only a
@@ -105,8 +122,8 @@ a native no-replace directory move.
 - A failed run preserves the capsule so the evidence can be inspected, explicitly discarded, or the
   generation retried as a new run.
 
-V1 intentionally exposes only `preview`, `inspect`, `discard`, and the fully confirmed `run` path.
-It does not claim to manage or upgrade a project after Finalize.
+The public lifecycle is deliberately limited to `preview`, `inspect`, `discard`, `cleanup`, and the
+fully confirmed `run` path. It does not claim to manage or upgrade a project after Finalize.
 
 ## Development baseline
 

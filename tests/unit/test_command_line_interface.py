@@ -21,6 +21,9 @@ class RecordingCommandService:
     def discard(self, workspace: Path) -> CommandOutcome:
         return self._record("discard", workspace)
 
+    def cleanup(self, workspace: Path) -> CommandOutcome:
+        return self._record("cleanup", workspace)
+
     def run_non_interactive(self, config_path: Path) -> CommandOutcome:
         return self._record("run-non-interactive", config_path)
 
@@ -90,6 +93,24 @@ class CommandLineInterfaceTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(service.calls, [("run-non-interactive", (Path("project.json"),))])
+
+    def test_cleanup_retry_requires_the_exact_explicit_confirmation(self) -> None:
+        for arguments in (
+            ["cleanup", "--workspace", "work"],
+            ["cleanup", "--workspace", "work", "--confirm", "yes"],
+        ):
+            with self.subTest(arguments=arguments):
+                exit_code, _stdout, stderr, service = self.execute(arguments)
+                self.assertEqual(exit_code, 2)
+                self.assertIn("CLEANUP", stderr)
+                self.assertEqual(service.calls, [])
+
+        exit_code, _stdout, stderr, service = self.execute(
+            ["cleanup", "--workspace", "work", "--confirm", "CLEANUP"]
+        )
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, "")
+        self.assertEqual(service.calls, [("cleanup", (Path("work"),))])
 
     def test_retired_lifecycle_commands_are_not_exposed(self) -> None:
         for command in ("generate", "validate", "status", "regenerate", "finalize", "cancel"):

@@ -11,6 +11,7 @@ from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     calculate_candidate_digest,
 )
+from scaffold_compiler.cleanup_recovery import CleanupRecoveryResult
 from scaffold_compiler.command_line_interface import CommandOutcome
 from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceDiscardResult,
@@ -169,7 +170,7 @@ class V1CommandApplicationTests(unittest.TestCase):
             self.assertFalse((root / "delivery").exists())
             self.assertFalse(any(".scaffold-" in path.name for path in root.iterdir()))
 
-    def test_inspect_and_discard_route_recovery_results_without_uv(self) -> None:
+    def test_recovery_commands_route_results_without_uv(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             catalog_root = root / "blueprints"
@@ -198,15 +199,22 @@ class V1CommandApplicationTests(unittest.TestCase):
                     "scaffold_compiler.v1_command_application.discard_failed_workspace",
                     return_value=FailedWorkspaceDiscardResult(True),
                 ) as discard_workspace,
+                patch(
+                    "scaffold_compiler.v1_command_application.retry_cleanup_pending_workspace",
+                    return_value=CleanupRecoveryResult(True),
+                ) as cleanup_workspace,
             ):
                 inspected = application.inspect(Path(".delivery.scaffold-run-1"))
                 discarded = application.discard(Path(".delivery.scaffold-run-1"))
+                cleaned = application.cleanup(Path(".delivery.scaffold-run-1"))
 
             self.assertEqual(json.loads(inspected.message)["failed_gates"], ["pytest"])
             self.assertEqual(discarded.exit_code, 0)
+            self.assertEqual(cleaned.exit_code, 0)
             expected = root.resolve() / ".delivery.scaffold-run-1"
             inspect_workspace.assert_called_once_with(expected)
             discard_workspace.assert_called_once_with(expected)
+            cleanup_workspace.assert_called_once_with(expected)
 
 
 if __name__ == "__main__":

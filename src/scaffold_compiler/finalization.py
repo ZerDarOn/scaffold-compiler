@@ -251,7 +251,7 @@ def cleanup_owned_candidate(
     """Delete only unchanged manifest-owned candidate entries, allowing safe retry."""
     if not candidate.root.exists():
         return OwnedCleanupResult(completed=True)
-    if not _owned_candidate_subset_is_safe(candidate):
+    if not verify_owned_candidate_cleanup_safety(candidate):
         return OwnedCleanupResult(
             completed=False,
             failed_paths=("candidate-ownership-check",),
@@ -302,7 +302,8 @@ def _verify_or_raise(candidate: CandidateAssemblyResult, message: str) -> None:
         raise CommitSnapshotChangedError(message) from error
 
 
-def _owned_candidate_subset_is_safe(candidate: CandidateAssemblyResult) -> bool:
+def verify_owned_candidate_cleanup_safety(candidate: CandidateAssemblyResult) -> bool:
+    """Preflight that every remaining candidate entry is unchanged and manifest-owned."""
     if _is_link_or_reparse(candidate.root):
         return False
     expected = {record.path: record for record in candidate.files}

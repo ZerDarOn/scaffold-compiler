@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 from typing import cast
 from unittest.mock import patch
 
+from scaffold_compiler.cleanup_recovery import CleanupRecoveryResult
 from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceDiscardResult,
     FailedWorkspaceInspection,
@@ -181,7 +182,7 @@ class ProjectCommandApplicationTests(unittest.TestCase):
             self.assertIs(captured["validation_runtime_context"], runtime_context)
             self.assertIs(captured["runtime_configuration"], configuration)
 
-    def test_inspect_and_discard_reuse_the_exact_failed_workspace_services(self) -> None:
+    def test_recovery_commands_reuse_the_exact_workspace_services(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             catalog_root, _config_path = _write_fixture(root)
@@ -209,16 +210,23 @@ class ProjectCommandApplicationTests(unittest.TestCase):
                     "scaffold_compiler.project_command_application.discard_failed_workspace",
                     return_value=FailedWorkspaceDiscardResult(True),
                 ) as discard_workspace,
+                patch(
+                    "scaffold_compiler.project_command_application.retry_cleanup_pending_workspace",
+                    return_value=CleanupRecoveryResult(True),
+                ) as cleanup_workspace,
             ):
                 inspected = application.inspect(Path(".delivery.scaffold-failed-run"))
                 discarded = application.discard(Path(".delivery.scaffold-failed-run"))
+                cleaned = application.cleanup(Path(".delivery.scaffold-failed-run"))
 
             expected = root.resolve() / ".delivery.scaffold-failed-run"
             inspect_workspace.assert_called_once_with(expected)
             discard_workspace.assert_called_once_with(expected)
+            cleanup_workspace.assert_called_once_with(expected)
             self.assertEqual(inspected.exit_code, 0)
             self.assertEqual(json.loads(inspected.message)["failed_gates"], ["unit-tests"])
             self.assertEqual(discarded.exit_code, 0)
+            self.assertEqual(cleaned.exit_code, 0)
 
 
 if __name__ == "__main__":

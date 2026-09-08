@@ -13,6 +13,7 @@ from scaffold_compiler.blueprint_plan_compiler import (
     compile_recipe_blueprint_plan,
     resolve_recipe_capabilities,
 )
+from scaffold_compiler.cleanup_recovery import retry_cleanup_pending_workspace
 from scaffold_compiler.command_line_interface import CommandOutcome
 from scaffold_compiler.failed_workspace_recovery import (
     discard_failed_workspace,
@@ -162,6 +163,13 @@ class ProjectCommandApplication:
         if not result.completed:
             return CommandOutcome(1, result.reason or "Failed workspace was not discarded.")
         return CommandOutcome(0, "Failed workspace discarded successfully.")
+
+    def cleanup(self, workspace: Path) -> CommandOutcome:
+        """Retry cleanup only for an exactly owned, already-published workspace."""
+        result = retry_cleanup_pending_workspace(self._absolute_path(workspace))
+        if not result.completed:
+            return CommandOutcome(1, result.reason or "Pending cleanup did not complete.")
+        return CommandOutcome(0, "Pending cleanup completed successfully.")
 
     def _load_configuration(
         self,

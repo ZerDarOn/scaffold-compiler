@@ -38,6 +38,8 @@ class ScaffoldCommandService(Protocol):
 
     def discard(self, workspace: Path) -> CommandOutcome: ...
 
+    def cleanup(self, workspace: Path) -> CommandOutcome: ...
+
     def run_non_interactive(self, config_path: Path) -> CommandOutcome: ...
 
 
@@ -66,7 +68,8 @@ def run_command_line(
         if "--confirm-finalize" in message:
             message = f"{message}; explicit FINALIZE confirmation is required"
         elif "--confirm" in message:
-            message = f"{message}; explicit DISCARD confirmation is required"
+            confirmation = "CLEANUP" if arguments[:1] == ["cleanup"] else "DISCARD"
+            message = f"{message}; explicit {confirmation} confirmation is required"
         stderr.write(f"usage error: {message}\n")
         return _EXIT_USAGE_ERROR
 
@@ -97,6 +100,10 @@ def _build_parser() -> argparse.ArgumentParser:
     discard.add_argument("--workspace", required=True, type=Path)
     discard.add_argument("--confirm", required=True, choices=("DISCARD",))
 
+    cleanup = commands.add_parser("cleanup")
+    cleanup.add_argument("--workspace", required=True, type=Path)
+    cleanup.add_argument("--confirm", required=True, choices=("CLEANUP",))
+
     non_interactive = commands.add_parser("run")
     non_interactive.add_argument("--config", required=True, type=Path)
     non_interactive.add_argument("--non-interactive", action="store_true", required=True)
@@ -119,6 +126,8 @@ def _dispatch(
         return service.inspect(parsed.workspace)
     if command == "discard":
         return service.discard(parsed.workspace)
+    if command == "cleanup":
+        return service.cleanup(parsed.workspace)
     if command == "run":
         return service.run_non_interactive(parsed.config)
     raise AssertionError("Argument parser returned an unknown command.")

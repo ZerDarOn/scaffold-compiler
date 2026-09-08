@@ -25,6 +25,9 @@ class SuccessfulRunApplication:
     def run_non_interactive(self, config_path: Path) -> CommandOutcome:
         return CommandOutcome(0, "completed")
 
+    def cleanup(self, workspace: Path) -> CommandOutcome:
+        return CommandOutcome(0, "cleanup completed")
+
     def __getattr__(self, name: str) -> object:
         raise AssertionError(f"unexpected command: {name}")
 
@@ -196,6 +199,40 @@ class ReleaseEntryTests(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             start_supervisor.assert_not_called()
             self.assertTrue(capsule_root.exists())
+
+    def test_successful_cleanup_recovery_also_arms_capsule_self_cleanup(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "scaffold_compiler.pyz").write_bytes(b"zipapp")
+            capsule_root = build_capsule_package(
+                source,
+                root / "capsule",
+                included_paths=("scaffold_compiler.pyz",),
+                capsule_id=CAPSULE_ID,
+                compiler_version="1.0.0",
+            )
+
+            with patch(
+                "scaffold_compiler.release_entry.start_capsule_cleanup_supervisor"
+            ) as start_supervisor:
+                exit_code = main(
+                    [
+                        "cleanup",
+                        "--workspace",
+                        str(root / ".delivery.scaffold-run"),
+                        "--confirm",
+                        "CLEANUP",
+                    ],
+                    entry_path=capsule_root / "scaffold_compiler.pyz",
+                    application=cast(ScaffoldCommandService, SuccessfulRunApplication()),
+                    stdout=io.StringIO(),
+                    stderr=io.StringIO(),
+                )
+
+            self.assertEqual(exit_code, 0)
+            start_supervisor.assert_called_once()
 
     def test_uv_resolution_accepts_only_an_existing_ordinary_file(self) -> None:
         with TemporaryDirectory() as directory:

@@ -72,6 +72,18 @@ class CandidateOwnershipStore:
 
     def load(self, workspace: Path) -> CandidateAssemblyResult:
         """Load ownership evidence bound to the fixed candidate child and its bytes."""
+        return self._load(workspace, verify_complete_tree=True)
+
+    def load_for_cleanup(self, workspace: Path) -> CandidateAssemblyResult:
+        """Load strict ownership records while allowing an already-partial owned cleanup."""
+        return self._load(workspace, verify_complete_tree=False)
+
+    def _load(
+        self,
+        workspace: Path,
+        *,
+        verify_complete_tree: bool,
+    ) -> CandidateAssemblyResult:
         try:
             trusted_workspace = workspace.resolve(strict=True)
             canonical_path = self.path.parent.resolve(strict=True) / self.path.name
@@ -96,7 +108,10 @@ class CandidateOwnershipStore:
                 digest=candidate_digest,
                 plan_digest=plan_digest,
             )
-            if calculate_candidate_digest(candidate.root, candidate.files) != candidate.digest:
+            if (
+                verify_complete_tree
+                and calculate_candidate_digest(candidate.root, candidate.files) != candidate.digest
+            ):
                 raise ValueError("Candidate bytes do not match ownership evidence.")
             return candidate
         except (

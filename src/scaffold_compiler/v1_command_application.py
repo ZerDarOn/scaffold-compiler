@@ -10,6 +10,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from scaffold_compiler.candidate_project_assembler import CandidateAssemblyResult
+from scaffold_compiler.cleanup_recovery import retry_cleanup_pending_workspace
 from scaffold_compiler.command_line_interface import CommandOutcome
 from scaffold_compiler.failed_workspace_recovery import (
     discard_failed_workspace,
@@ -243,6 +244,13 @@ class V1CommandApplication:
         if not result.completed:
             return CommandOutcome(1, result.reason or "Failed workspace was not discarded.")
         return CommandOutcome(0, "Failed workspace discarded successfully.")
+
+    def cleanup(self, workspace: Path) -> CommandOutcome:
+        """Retry cleanup only for an exactly owned, already-published workspace."""
+        result = retry_cleanup_pending_workspace(self._absolute_path(workspace))
+        if not result.completed:
+            return CommandOutcome(1, result.reason or "Pending cleanup did not complete.")
+        return CommandOutcome(0, "Pending cleanup completed successfully.")
 
     def _absolute_path(self, path: Path) -> Path:
         return path if path.is_absolute() else (self._working_directory / path).absolute()
