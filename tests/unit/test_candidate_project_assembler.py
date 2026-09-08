@@ -169,6 +169,53 @@ class CandidateProjectAssemblerTests(unittest.TestCase):
             with self.assertRaises(CandidateChangedError):
                 verify_candidate_digest(result)
 
+    def test_unknown_empty_directory_invalidates_the_complete_candidate_tree(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root = root / "blueprints"
+            workspace = root / "workspace"
+            catalog_root.mkdir()
+            workspace.mkdir()
+            write_test_catalog(catalog_root)
+            catalog = load_blueprint_catalog(catalog_root)
+            plan = compile_blueprint_plan(catalog, ("core",))
+            result = assemble_candidate_project(
+                catalog,
+                plan,
+                workspace,
+                values={"project_name": "Example", "package_name": "example"},
+            )
+            (result.root / "unowned").mkdir()
+
+            with self.assertRaises(CandidateChangedError):
+                verify_candidate_digest(result)
+
+    def test_candidate_root_reparse_point_invalidates_the_frozen_digest(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root = root / "blueprints"
+            workspace = root / "workspace"
+            catalog_root.mkdir()
+            workspace.mkdir()
+            write_test_catalog(catalog_root)
+            catalog = load_blueprint_catalog(catalog_root)
+            plan = compile_blueprint_plan(catalog, ("core",))
+            result = assemble_candidate_project(
+                catalog,
+                plan,
+                workspace,
+                values={"project_name": "Example", "package_name": "example"},
+            )
+
+            with (
+                patch(
+                    "scaffold_compiler.candidate_project_assembler._is_windows_reparse_point",
+                    side_effect=lambda path: path == result.root,
+                ),
+                self.assertRaises(CandidateChangedError),
+            ):
+                verify_candidate_digest(result)
+
     def test_repeated_assembly_in_separate_workspaces_is_byte_deterministic(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

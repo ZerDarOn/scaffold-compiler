@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 import os
+import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +20,9 @@ from scaffold_compiler.blueprint_catalog import (
 from scaffold_compiler.blueprint_plan_compiler import GenerationPlan
 from scaffold_compiler.path_safety import (
     LinkedProjectPathError,
+    ProjectPathError,
     resolve_safe_output_path,
+    validate_unique_target_paths,
 )
 from scaffold_compiler.strict_template_renderer import render_strict_template
 
@@ -191,23 +194,40 @@ def calculate_candidate_digest(
     expected_files: tuple[CandidateFileRecord, ...],
 ) -> str:
     """Recompute a candidate tree digest and reject additions or links."""
-    expected_by_path = {record.path: record for record in expected_files}
+    if candidate_root.is_symlink() or _is_windows_reparse_point(candidate_root):
+        raise CandidateChangedError("Candidate root is a link or reparse point.")
+    try:
+        canonical_paths = validate_unique_target_paths(record.path for record in expected_files)
+        for relative_path in canonical_paths:
+            resolve_safe_output_path(candidate_root, relative_path)
+    except ProjectPathError as error:
+        raise CandidateChangedError("Candidate ownership paths are invalid.") from error
+    expected_by_path = dict(zip(canonical_paths, expected_files, strict=True))
+    expected_directories = _expected_candidate_directories(canonical_paths)
     actual_paths: set[str] = set()
     actual_records: list[dict[str, object]] = []
     try:
-        for path in candidate_root.rglob("*"):
-            if path.is_symlink():
+        for entry in candidate_root.rglob("*"):
+            if entry.is_symlink() or _is_windows_reparse_point(entry):
                 raise LinkedProjectPathError("Candidate tree contains a link.")
-            if not path.is_file():
+            relative_path = entry.relative_to(candidate_root).as_posix()
+            if entry.is_dir():
+                if relative_path not in expected_directories:
+                    raise CandidateChangedError(
+                        f"Candidate contains an unexpected directory: {relative_path}."
+                    )
                 continue
-            relative_path = path.relative_to(candidate_root).as_posix()
+            if not entry.is_file():
+                raise CandidateChangedError(
+                    f"Candidate contains an unsupported entry: {relative_path}."
+                )
             actual_paths.add(relative_path)
             owner_record = expected_by_path.get(relative_path)
             if owner_record is None:
                 raise CandidateChangedError(
                     f"Candidate contains an unexpected file: {relative_path}."
                 )
-            content = path.read_bytes()
+            content = entry.read_bytes()
             content_digest = hashlib.sha256(content).hexdigest()
             if len(content) != owner_record.size or not hmac.compare_digest(
                 content_digest,
@@ -244,6 +264,25 @@ def verify_candidate_digest(result: CandidateAssemblyResult) -> None:
     current_digest = calculate_candidate_digest(result.root, result.files)
     if not hmac.compare_digest(current_digest, result.digest):
         raise CandidateChangedError("Candidate digest no longer matches assembly.")
+
+
+def _expected_candidate_directories(paths: tuple[str, ...]) -> set[str]:
+    directories: set[str] = set()
+    for path in paths:
+        parent = Path(path).parent
+        while parent != Path("."):
+            directories.add(parent.as_posix())
+            parent = parent.parent
+    return directories
+
+
+def _is_windows_reparse_point(path: Path) -> bool:
+    try:
+        attributes = getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0)
+    except OSError:
+        return False
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    return bool(attributes & reparse_flag)
 
 
 def _selected_manifests(

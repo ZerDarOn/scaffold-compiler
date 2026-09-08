@@ -454,6 +454,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 7.2｜最终工程审查
 
+**状态：完成。**
+
 - Input：完整差异、双平台 CI、故障注入结果。
 - Output：按正确性、安全、原子性、可观测性、性能和测试覆盖排序的审查结论。
 - Risk：迁移期兼容代码成为永久双轨架构。
@@ -470,8 +472,8 @@ C 配方使用同一公共封装，但答案属于自身：
 ## 11. 状态快照
 
 - Done：Phase 1–6；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；C 工具链中断保留可检查/可丢弃证据，发布后清理中断可经目标摘要复核后幂等恢复。
-- Tests：本地全量为 266 passed、4 skipped；用户指南覆盖双配方配置、完整 CLI 生命周期、工具前提和失败恢复，作者指南冻结受信内置、纯数据蓝图与闭合适配器边界，并由文档契约测试防漂移。本机仅因 C 工具链、Docker 与 POSIX 语义缺失而跳过对应外部测试。Task 6.3 远端 `quality` run 34189286346 的 Ubuntu、Windows 核心质量与 FastAPI Linux 四组合三个 jobs 全部成功。
-- Next：Task 7.2，执行最终工程审查。
+- Tests：本地全量为 268 passed、4 skipped；Task 7.2 审查修正完整候选摘要曾忽略未知空目录和候选根重解析点的问题，相关装配、适配器、Finalize 与恢复安全回归为 36 passed、20 subtests passed。用户与作者指南由文档契约测试防漂移；Task 6.3 远端 `quality` run 34189286346 的 Ubuntu、Windows 核心质量与 FastAPI Linux 四组合三个 jobs 全部成功。
+- Next：Task 7.3，选择 V2 版本并构建发布候选；创建标签或 GitHub Release 前必须获得单独授权。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；托管 Ubuntu/Windows 工具链已验证，具体 GCC/Clang/MSVC 最低版本仍待兼容矩阵冻结。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 
