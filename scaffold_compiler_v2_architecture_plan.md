@@ -413,6 +413,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 6.1｜FastAPI 等价回归矩阵
 
+**状态：完成。**
+
 - Input：通用 CLI 与四种 V1/V2 FastAPI 配置。
 - Output：旧配置与 V2 配置的计划、文件、运行行为、Finalize 和自清理等价证据。
 - Risk：通用化成功但破坏已经发布的第一套配方。
@@ -463,9 +465,9 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–5 与 Task 6.2；`c-cmake-cli` 已在 GitHub Actions 的 Ubuntu/Windows 独立完成真实胶囊生成、Ninja 编译、CTest、产物运行、Finalize 和自清理，FastAPI Linux 发布矩阵同时保持通过。
-- Tests：本地全量为 255 passed、3 skipped，新增 C 真实验收因本机无工具链单独 skipped；远端 `quality` run 34185888831 的 Ubuntu、Windows 核心质量与 FastAPI Linux 四组合三个 jobs 全部成功。
-- Next：Task 6.1，补齐同一输入的 V1/V2 FastAPI 计划、文件和 Finalize 等价证据；随后执行 Task 6.3 跨配方故障恢复。
+- Done：Phase 1–5 与 Task 6.1–6.2；FastAPI M-01 到 M-04 的 V1/V2 输入已分别通过 preview、通用事务和 Finalize，并逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路。
+- Tests：本地全量为 256 passed、4 skipped，FastAPI 等价矩阵另含 4 个通过的 subtests；本机仅因 C 工具链、Docker 与 POSIX 语义缺失而跳过对应外部测试。远端 `quality` run 34185888831 的 Ubuntu、Windows 核心质量与 FastAPI Linux 四组合三个 jobs 全部成功。
+- Next：Task 6.3，覆盖配方错配、C 工具链中断、Finalize 竞态、清理失败与重复恢复的跨配方验收。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；托管 Ubuntu/Windows 工具链已验证，具体 GCC/Clang/MSVC 最低版本仍待兼容矩阵冻结。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 

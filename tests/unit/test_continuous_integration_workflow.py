@@ -33,6 +33,7 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertIn("ctest --version", workflow)
         self.assertIn("ninja --version", workflow)
         self.assertIn("tests/acceptance/test_cmake_disposable_release_workflow.py", workflow)
+        self.assertIn("tests/acceptance/test_fastapi_v1_v2_equivalence.py", workflow)
         self.assertIn("::error title=pytest failure::", workflow)
 
         references = ACTION_REFERENCE.findall(workflow)
