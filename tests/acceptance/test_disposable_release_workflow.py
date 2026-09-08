@@ -29,20 +29,49 @@ class DisposableReleaseWorkflowTests(unittest.TestCase):
             )
             target = root / "delivery"
             config = root / "project.json"
-            config.write_text(
-                json.dumps(
-                    {
-                        "project_name": "Release Acceptance API",
-                        "package_name": "release_acceptance",
-                        "target_directory": str(target),
-                        "database": "none",
-                        "container": "none",
-                    }
-                ),
-                encoding="utf-8",
-            )
             environment = os.environ.copy()
             environment["SCAFFOLD_COMPILER_UV"] = str(uv_executable)
+
+            initialized = subprocess.run(
+                (
+                    sys.executable,
+                    str(capsule / "scaffold_compiler.pyz"),
+                    "init",
+                    "--output",
+                    str(config),
+                ),
+                cwd=root,
+                input=(f"1\nRelease Acceptance API\n{target}\nrelease_acceptance\nnone\nnone\n"),
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(initialized.returncode, 0, initialized.stderr)
+            self.assertFalse(target.exists())
+            self.assertTrue(capsule.exists())
+
+            previewed = subprocess.run(
+                (
+                    sys.executable,
+                    str(capsule / "scaffold_compiler.pyz"),
+                    "preview",
+                    "--config",
+                    str(config),
+                ),
+                cwd=root,
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(previewed.returncode, 0, previewed.stderr)
+            preview = json.loads(previewed.stdout)
+            self.assertEqual(preview["recipe"], "python-fastapi-service")
+            self.assertNotIn("postgres-persistence", preview["blueprints"])
+            self.assertNotIn("docker-delivery", preview["blueprints"])
+            self.assertFalse(target.exists())
+            self.assertTrue(capsule.exists())
 
             completed = subprocess.run(
                 (

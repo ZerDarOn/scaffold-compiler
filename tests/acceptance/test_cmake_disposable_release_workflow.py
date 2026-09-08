@@ -38,24 +38,49 @@ class CMakeDisposableReleaseWorkflowTests(unittest.TestCase):
             )
             target = root / "delivery"
             config = root / "project.json"
-            config.write_text(
-                json.dumps(
-                    {
-                        "answers": {
-                            "strict_warnings": True,
-                            "target_name": "release_c_cli",
-                        },
-                        "project_name": "Release C CLI",
-                        "recipe": "c-cmake-cli",
-                        "schema_version": 2,
-                        "target_directory": str(target),
-                    }
-                ),
-                encoding="utf-8",
-            )
             environment = os.environ.copy()
             environment["SCAFFOLD_COMPILER_CMAKE"] = str(cmake)
             environment["SCAFFOLD_COMPILER_CTEST"] = str(ctest)
+
+            initialized = subprocess.run(
+                (
+                    sys.executable,
+                    str(capsule / "scaffold_compiler.pyz"),
+                    "init",
+                    "--output",
+                    str(config),
+                ),
+                cwd=root,
+                input=f"2\nRelease C CLI\n{target}\nrelease_c_cli\ny\n",
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(initialized.returncode, 0, initialized.stderr)
+            self.assertFalse(target.exists())
+            self.assertTrue(capsule.exists())
+
+            previewed = subprocess.run(
+                (
+                    sys.executable,
+                    str(capsule / "scaffold_compiler.pyz"),
+                    "preview",
+                    "--config",
+                    str(config),
+                ),
+                cwd=root,
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(previewed.returncode, 0, previewed.stderr)
+            preview = json.loads(previewed.stdout)
+            self.assertEqual(preview["recipe"], "c-cmake-cli")
+            self.assertIn("cmake-strict-warnings", preview["blueprints"])
+            self.assertFalse(target.exists())
+            self.assertTrue(capsule.exists())
 
             completed = subprocess.run(
                 (
