@@ -103,3 +103,69 @@ GOLDEN_PROJECT_SPECIFICATIONS = (
         runtime_dependencies=BASE_DEPENDENCIES | POSTGRES_DEPENDENCIES,
     ),
 )
+
+
+CMAKE_COMMON_PATHS = frozenset(
+    {
+        ".editorconfig",
+        ".github/workflows/quality.yml",
+        ".gitignore",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "README.md",
+        "include/{target_name}/calculator.h",
+        "src/calculator.c",
+        "src/main.c",
+        "tests/test_calculator.c",
+    }
+)
+CMAKE_STRICT_WARNING_PATHS = frozenset({"cmake/StrictWarnings.cmake"})
+CMAKE_GENERATOR_MARKERS = ("scaffold_compiler", "blueprint", "journal", "run_id")
+
+
+@dataclass(frozen=True, slots=True)
+class CMakeGoldenProjectSpecification:
+    matrix_id: str
+    strict_warnings: bool
+    required_paths: frozenset[str]
+    forbidden_paths: frozenset[str]
+    required_cmake_tokens: tuple[str, ...]
+    forbidden_cmake_tokens: tuple[str, ...]
+    expected_output: str = "scaffold compiler c example\n"
+
+
+CMAKE_GOLDEN_PROJECT_SPECIFICATIONS = (
+    CMakeGoldenProjectSpecification(
+        matrix_id="C-01",
+        strict_warnings=False,
+        required_paths=CMAKE_COMMON_PATHS,
+        forbidden_paths=CMAKE_STRICT_WARNING_PATHS,
+        required_cmake_tokens=(
+            "cmake_minimum_required(VERSION 3.20)",
+            "LANGUAGES C",
+            "C_STANDARD 11",
+            "add_library(",
+            "add_executable(",
+            "include(CTest)",
+            "add_test(",
+        ),
+        forbidden_cmake_tokens=("StrictWarnings",),
+    ),
+    CMakeGoldenProjectSpecification(
+        matrix_id="C-02",
+        strict_warnings=True,
+        required_paths=CMAKE_COMMON_PATHS | CMAKE_STRICT_WARNING_PATHS,
+        forbidden_paths=frozenset(),
+        required_cmake_tokens=(
+            "cmake_minimum_required(VERSION 3.20)",
+            "LANGUAGES C",
+            "C_STANDARD 11",
+            "add_library(",
+            "add_executable(",
+            "include(CTest)",
+            "add_test(",
+            "include(cmake/StrictWarnings.cmake)",
+        ),
+        forbidden_cmake_tokens=(),
+    ),
+)

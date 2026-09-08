@@ -1,0 +1,1 @@
+{"after":["cmake-build-system"],"conflicts":[],"contributions":{},"files":[{"kind":"static","source":"static/StrictWarnings.cmake","target":"cmake/StrictWarnings.cmake"}],"id":"cmake-strict-warnings","provides":["cmake-strict-warnings"],"requires":["cmake-project"],"schema_version":2,"validations":[],"variables":{},"version":"1.0.0"}

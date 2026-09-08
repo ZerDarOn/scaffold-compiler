@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 
 from scaffold_compiler.project_configuration import ConfigurationValidationError
 from scaffold_compiler.project_recipe_registry import (
+    CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
     build_builtin_project_recipe_registry,
     build_project_recipe_registry,
@@ -57,6 +58,53 @@ def _c_recipe_record(version: str) -> dict[str, object]:
 
 
 class RecipeProjectConfigurationTests(unittest.TestCase):
+    def test_normalizes_builtin_cmake_answers_and_applies_defaults(self) -> None:
+        with TemporaryDirectory() as directory:
+            configuration = parse_builtin_recipe_project_configuration(
+                {
+                    "schema_version": 2,
+                    "recipe": CMAKE_RECIPE_ID,
+                    "project_name": "  Example   CLI  ",
+                    "target_directory": "example-cli",
+                    "answers": {},
+                },
+                working_directory=Path(directory),
+                home_directory=Path(directory) / "home",
+            )
+
+            self.assertEqual(configuration.recipe_id, CMAKE_RECIPE_ID)
+            self.assertEqual(
+                configuration.answers,
+                {"strict_warnings": True, "target_name": "example_cli"},
+            )
+
+    def test_rejects_nonportable_cmake_target_names_and_non_boolean_warning_flag(self) -> None:
+        invalid_cases = (
+            ({"target_name": "1invalid"}, "invalid_target_name"),
+            ({"target_name": "invalid-name"}, "invalid_target_name"),
+            ({"target_name": "UPPER_CASE"}, "invalid_target_name"),
+            ({"target_name": "a" * 64}, "invalid_target_name"),
+            ({"strict_warnings": 1}, "invalid_strict_warnings"),
+            ({"strict_warnings": "true"}, "invalid_strict_warnings"),
+            ({"extra": True}, "unknown_answer_fields"),
+        )
+        for answers, expected_code in invalid_cases:
+            with self.subTest(answers=answers), TemporaryDirectory() as directory:
+                with self.assertRaises(ConfigurationValidationError) as error_context:
+                    parse_builtin_recipe_project_configuration(
+                        {
+                            "schema_version": 2,
+                            "recipe": CMAKE_RECIPE_ID,
+                            "project_name": "Example CLI",
+                            "target_directory": "example-cli",
+                            "answers": answers,
+                        },
+                        working_directory=Path(directory),
+                        home_directory=Path(directory) / "home",
+                    )
+
+                self.assertEqual(error_context.exception.code, expected_code)
+
     def test_normalizes_v2_fastapi_input_and_applies_recipe_defaults(self) -> None:
         with TemporaryDirectory() as directory:
             working_directory = Path(directory)

@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.20)
+project(${target_name} VERSION 0.1.0 LANGUAGES C)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+${strict_warnings_setup}
+
+add_library(${target_name}_library src/calculator.c)
+target_include_directories(
+    ${target_name}_library
+    PUBLIC include
+)
+
+add_executable(${target_name} src/main.c)
+target_link_libraries(${target_name} PRIVATE ${target_name}_library)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(${target_name}_tests tests/test_calculator.c)
+    target_link_libraries(${target_name}_tests PRIVATE ${target_name}_library)
+    add_test(NAME calculator-unit COMMAND ${target_name}_tests)
+    add_test(NAME cli-output COMMAND ${target_name})
+    set_tests_properties(cli-output PROPERTIES PASS_REGULAR_EXPRESSION "scaffold compiler c example")
+endif()

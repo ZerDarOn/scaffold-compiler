@@ -372,6 +372,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 5.1｜C 配方黄金项目失败测试
 
+**状态：完成。**
+
 - Input：C 配置契约、CMake CLI 最小结构和跨平台要求。
 - Output：文件树、C 标识符、CMake 配置、严格警告、测试、README、CI 和未选能力零残留的黄金规格。
 - Risk：为了快速演示而生成不可维护或只在单平台工作的 C 项目。
@@ -379,6 +381,8 @@ C 配方使用同一公共封装，但答案属于自身：
 - Flag：TDD 失败测试。
 
 #### Task 5.2｜C 配方与声明式蓝图最小实现
+
+**状态：完成。**
 
 - Input：Task 5.1、通用规划与装配接口。
 - Output：`c-cmake-cli` 注册、C 运行时/构建/测试/质量蓝图及受信装配适配器。
@@ -453,10 +457,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–4 全部任务；可执行入口已切换到通用命令应用，FastAPI 专有运行时仅存在于受信内置组合根，旧 V1 配置继续兼容。
-- Tests：本地全量回归为 237 passed、3 skipped、200 subtests passed；CLI 回归证明旧 V1 与显式 V2 FastAPI 配置产生相同预览摘要，并显式报告配方 ID/版本。
-- Next：Task 5.1，为最小 C/CMake CLI 定义跨平台黄金项目文件树、标识符、严格警告和零残留失败测试。
-- Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：单点将 release entry 恢复到 V1CommandApplication 即可撤销 CLI 切换；Phase 1–3 与通用应用代码可继续保留。
+- Done：Phase 1–4 与 Task 5.1–5.2；`c-cmake-cli` 配方、C11 库/CLI/CTest 黄金项目、严格警告可选蓝图、跨平台 CI 模板和受信装配器已接入，未修改通用生命周期。
+- Tests：本地全量回归为 245 passed、3 skipped、216 subtests passed；两种严格警告模式的精确文件树、零残留、配置边界、CLI 预览、候选摘要和原静态安全扫描均通过。
+- Next：Task 5.3，为 CMake configure、build、CTest、产物运行、工具缺失、超时和输出上限编写受控进程失败测试。
+- Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；具体 GCC/Clang/MSVC 下限仍待双平台 CI 证据确认。
+- Rollback point：移除 CMake 配方注册、四个蓝图和装配器即可回退 Task 5.1–5.2；FastAPI 与通用生命周期不受影响。
 
-Phase 4 generic lifecycle and CLI checkpoint complete. Proceed with the C/CMake reference recipe?
+Phase 5 C/CMake assembly checkpoint complete. Proceed with the controlled validator?

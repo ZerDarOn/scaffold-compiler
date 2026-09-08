@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,7 @@ from scaffold_compiler.project_configuration import (
     parse_project_configuration,
 )
 from scaffold_compiler.project_recipe_registry import (
+    CMAKE_ANSWER_PARSER_KEY,
     FASTAPI_ANSWER_PARSER_KEY,
     FASTAPI_RECIPE_ID,
     ProjectRecipe,
@@ -34,6 +36,8 @@ _V2_FIELDS: Final = frozenset(
 _V2_MARKER_FIELDS: Final = frozenset({"answers", "recipe", "schema_version"})
 _LEGACY_ONLY_FIELDS: Final = frozenset({"container", "database", "package_name"})
 _FASTAPI_ANSWER_FIELDS: Final = frozenset({"database", "delivery", "package_name"})
+_CMAKE_ANSWER_FIELDS: Final = frozenset({"strict_warnings", "target_name"})
+_CMAKE_TARGET_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 
 JSONScalar: TypeAlias = bool | int | float | str | None
 JSONValue: TypeAlias = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
@@ -122,7 +126,10 @@ def parse_builtin_recipe_project_configuration(
 
 def build_builtin_answer_normalizers() -> Mapping[str, AnswerNormalizer]:
     """Return the statically imported answer normalizers shipped by the compiler."""
-    return {FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers}
+    return {
+        FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers,
+        CMAKE_ANSWER_PARSER_KEY: _normalize_cmake_answers,
+    }
 
 
 def convert_legacy_project_configuration(
@@ -244,6 +251,34 @@ def _normalize_fastapi_answers(
         "delivery": delivery,
         "package_name": package_name,
     }
+
+
+def _normalize_cmake_answers(
+    raw_answers: Mapping[str, object],
+    project_name: str,
+) -> Mapping[str, JSONValue]:
+    if set(raw_answers).difference(_CMAKE_ANSWER_FIELDS):
+        _raise_configuration_error(
+            "answers",
+            "unknown_answer_fields",
+            "Recipe answers contain unsupported fields.",
+        )
+    default_target_name = re.sub(r"[^a-z0-9]+", "_", project_name.lower()).strip("_")
+    target_name = raw_answers.get("target_name", default_target_name)
+    if not isinstance(target_name, str) or not _CMAKE_TARGET_NAME_PATTERN.fullmatch(target_name):
+        _raise_configuration_error(
+            "target_name",
+            "invalid_target_name",
+            "CMake target name is not a portable C identifier.",
+        )
+    strict_warnings = raw_answers.get("strict_warnings", True)
+    if type(strict_warnings) is not bool:
+        _raise_configuration_error(
+            "strict_warnings",
+            "invalid_strict_warnings",
+            "Strict warnings must be a boolean.",
+        )
+    return {"strict_warnings": strict_warnings, "target_name": target_name}
 
 
 def _normalize_choice(raw_choice: object, *, field: str) -> str:

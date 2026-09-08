@@ -5,9 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
+from scaffold_compiler.cmake_project_assembly_adapter import (
+    build_cmake_project_assembly_adapter_registry,
+)
 from scaffold_compiler.fastapi_project_validation_adapter import (
     FastApiValidationRuntime,
     build_fastapi_project_validation_adapter_registration,
+)
+from scaffold_compiler.project_assembly_adapter_registry import (
+    build_project_assembly_adapter_registry,
 )
 from scaffold_compiler.project_command_application import ProjectCommandApplication
 from scaffold_compiler.project_recipe_registry import (
@@ -40,6 +46,8 @@ def build_builtin_project_command_application(
     resolved_catalog_root = catalog_root.resolve(strict=True)
     selected_environment = dict(environment)
     recipe_registry = build_builtin_project_recipe_registry()
+    fastapi_assembly_registry = build_fastapi_project_assembly_adapter_registry()
+    cmake_assembly_registry = build_cmake_project_assembly_adapter_registry()
 
     def validation_runtime_factory(
         configuration: RecipeProjectConfiguration,
@@ -73,7 +81,9 @@ def build_builtin_project_command_application(
         home_directory=home_directory,
         recipe_registry=recipe_registry,
         answer_normalizers=build_builtin_answer_normalizers(),
-        assembly_registry=build_fastapi_project_assembly_adapter_registry(),
+        assembly_registry=build_project_assembly_adapter_registry(
+            (*fastapi_assembly_registry.adapters, *cmake_assembly_registry.adapters)
+        ),
         validation_registry=build_project_validation_adapter_registry(
             (build_fastapi_project_validation_adapter_registration(),)
         ),

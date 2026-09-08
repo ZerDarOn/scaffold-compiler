@@ -1,0 +1,6 @@
+#ifndef ${target_name_upper}_CALCULATOR_H
+#define ${target_name_upper}_CALCULATOR_H
+
+int calculator_add(int left, int right);
+
+#endif

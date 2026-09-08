@@ -1,0 +1,13 @@
+# ${project_name}
+
+A small C11 command-line project with a reusable library boundary and CTest coverage.
+
+## Build and test
+
+```sh
+cmake --preset default
+cmake --build --preset default
+ctest --preset default
+```
+
+The executable is written to `build/${target_name}` (`build/${target_name}.exe` on Windows).

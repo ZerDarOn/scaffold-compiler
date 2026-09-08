@@ -72,6 +72,46 @@ class ReleaseEntryTests(unittest.TestCase):
             self.assertEqual(previews[0]["recipe"], "python-fastapi-service")
             self.assertEqual(previews[0]["recipe_version"], "1.0.0")
 
+    def test_default_application_previews_both_cmake_warning_modes(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "project.json"
+            blueprints_by_mode: dict[bool, list[str]] = {}
+
+            for strict_warnings in (False, True):
+                config_path.write_text(
+                    json.dumps(
+                        {
+                            "answers": {
+                                "strict_warnings": strict_warnings,
+                                "target_name": "example_cli",
+                            },
+                            "project_name": "Example CLI",
+                            "recipe": "c-cmake-cli",
+                            "schema_version": 2,
+                            "target_directory": str(root / "delivery"),
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                stdout = io.StringIO()
+
+                exit_code = main(
+                    ["preview", "--config", str(config_path)],
+                    entry_path=root / "source-entry.py",
+                    stdout=stdout,
+                    stderr=io.StringIO(),
+                    environment={},
+                )
+
+                self.assertEqual(exit_code, 0)
+                summary = json.loads(stdout.getvalue())
+                self.assertEqual(summary["recipe"], "c-cmake-cli")
+                blueprints_by_mode[strict_warnings] = summary["blueprints"]
+
+            self.assertNotIn("cmake-strict-warnings", blueprints_by_mode[False])
+            self.assertIn("cmake-strict-warnings", blueprints_by_mode[True])
+
     def test_successful_packaged_run_arms_external_cleanup_before_reporting_success(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

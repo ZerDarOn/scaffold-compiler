@@ -12,6 +12,10 @@ FASTAPI_RECIPE_ID: Final = "python-fastapi-service"
 FASTAPI_ANSWER_PARSER_KEY: Final = "fastapi-answers"
 FASTAPI_ASSEMBLY_ADAPTER_KEY: Final = "fastapi-v1-assembly"
 FASTAPI_VALIDATION_ADAPTER_KEY: Final = "fastapi-v1-validation"
+CMAKE_RECIPE_ID: Final = "c-cmake-cli"
+CMAKE_ANSWER_PARSER_KEY: Final = "cmake-answers"
+CMAKE_ASSEMBLY_ADAPTER_KEY: Final = "cmake-v1-assembly"
+CMAKE_VALIDATION_ADAPTER_KEY: Final = "cmake-v1-validation"
 
 _IDENTIFIER_PATTERN: Final = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 _SEMANTIC_VERSION_PATTERN: Final = re.compile(
@@ -47,7 +51,7 @@ class ProjectRecipeRegistryError(ValueError):
 class RecipeCapabilityRule:
     """Declarative answer conditions that request one or more capabilities."""
 
-    conditions: tuple[tuple[str, str], ...]
+    conditions: tuple[tuple[str, bool | str], ...]
     requested_capabilities: tuple[str, ...]
 
 
@@ -129,10 +133,13 @@ def build_project_recipe_registry(
 def build_builtin_project_recipe_registry() -> ProjectRecipeRegistry:
     """Return the registry shipped with this compiler version."""
     return build_project_recipe_registry(
-        [_FASTAPI_RECIPE_DECLARATION],
-        trusted_answer_parser_keys={FASTAPI_ANSWER_PARSER_KEY},
-        trusted_assembly_adapter_keys={FASTAPI_ASSEMBLY_ADAPTER_KEY},
-        trusted_validation_adapter_keys={FASTAPI_VALIDATION_ADAPTER_KEY},
+        [_FASTAPI_RECIPE_DECLARATION, _CMAKE_RECIPE_DECLARATION],
+        trusted_answer_parser_keys={FASTAPI_ANSWER_PARSER_KEY, CMAKE_ANSWER_PARSER_KEY},
+        trusted_assembly_adapter_keys={FASTAPI_ASSEMBLY_ADAPTER_KEY, CMAKE_ASSEMBLY_ADAPTER_KEY},
+        trusted_validation_adapter_keys={
+            FASTAPI_VALIDATION_ADAPTER_KEY,
+            CMAKE_VALIDATION_ADAPTER_KEY,
+        },
     )
 
 
@@ -200,16 +207,21 @@ def _parse_capability_rules(
     if not isinstance(raw_rules, list):
         _raise_recipe_error("capability_rules", "invalid_capability_rules")
     rules: list[RecipeCapabilityRule] = []
-    seen_conditions: set[tuple[tuple[str, str], ...]] = set()
+    seen_conditions: set[tuple[tuple[str, bool | str], ...]] = set()
     for raw_rule in raw_rules:
         if not isinstance(raw_rule, Mapping) or set(raw_rule) != {"when", "request"}:
             _raise_recipe_error("capability_rules", "invalid_capability_rule")
         raw_conditions = raw_rule["when"]
         if not isinstance(raw_conditions, Mapping) or not raw_conditions:
             _raise_recipe_error("capability_rules", "invalid_capability_rule")
-        conditions: list[tuple[str, str]] = []
+        conditions: list[tuple[str, bool | str]] = []
         for key, value in raw_conditions.items():
-            if not isinstance(key, str) or not key or not isinstance(value, str) or not value:
+            if (
+                not isinstance(key, str)
+                or not key
+                or not isinstance(value, (bool, str))
+                or value == ""
+            ):
                 _raise_recipe_error("capability_rules", "invalid_capability_rule")
             conditions.append((key, value))
         canonical_conditions = tuple(sorted(conditions))
@@ -340,4 +352,30 @@ _FASTAPI_RECIPE_DECLARATION: Final[Mapping[str, object]] = {
         "compose-cleanup",
     ],
     "prerequisites": ["Python 3.11 or newer", "uv 0.12.9"],
+}
+
+_CMAKE_RECIPE_DECLARATION: Final[Mapping[str, object]] = {
+    "schema_version": 1,
+    "id": CMAKE_RECIPE_ID,
+    "version": "1.0.0",
+    "answer_parser": CMAKE_ANSWER_PARSER_KEY,
+    "assembly_adapter": CMAKE_ASSEMBLY_ADAPTER_KEY,
+    "validation_adapter": CMAKE_VALIDATION_ADAPTER_KEY,
+    "required_capabilities": ["cmake-project"],
+    "capability_rules": [
+        {"when": {"strict_warnings": True}, "request": ["cmake-strict-warnings"]},
+    ],
+    "allowed_blueprints": [
+        "c-project-quality",
+        "c-runtime",
+        "cmake-build-system",
+        "cmake-strict-warnings",
+    ],
+    "allowed_validations": [
+        "cmake-configure",
+        "cmake-build",
+        "ctest",
+        "executable-run",
+    ],
+    "prerequisites": ["CMake 3.20 or newer", "Ninja 1.10 or newer", "A C11 compiler"],
 }

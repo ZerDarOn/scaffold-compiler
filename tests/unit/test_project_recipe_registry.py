@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from scaffold_compiler.project_recipe_registry import (
+    CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
     ProjectRecipeRegistryError,
     build_builtin_project_recipe_registry,
@@ -132,6 +133,21 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
                 (("delivery", "docker"),),
                 (("database", "postgres"), ("delivery", "docker")),
             },
+        )
+
+    def test_builtin_cmake_recipe_declares_an_optional_strict_warning_capability(self) -> None:
+        recipe = build_builtin_project_recipe_registry().get(CMAKE_RECIPE_ID)
+
+        self.assertEqual(recipe.version, "1.0.0")
+        self.assertEqual(recipe.answer_parser_key, "cmake-answers")
+        self.assertEqual(recipe.required_capabilities, ("cmake-project",))
+        self.assertEqual(
+            {rule.conditions: rule.requested_capabilities for rule in recipe.capability_rules},
+            {(("strict_warnings", True),): ("cmake-strict-warnings",)},
+        )
+        self.assertEqual(
+            set(recipe.allowed_validation_gates),
+            {"cmake-configure", "cmake-build", "ctest", "executable-run"},
         )
 
 

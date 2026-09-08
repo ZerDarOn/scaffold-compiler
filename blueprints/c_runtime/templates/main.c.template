@@ -1,0 +1,11 @@
+#include <stdio.h>
+
+#include "${target_name}/calculator.h"
+
+int main(void) {
+    if (calculator_add(20, 22) != 42) {
+        return 1;
+    }
+    puts("scaffold compiler c example");
+    return 0;
+}
