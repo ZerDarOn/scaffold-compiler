@@ -463,6 +463,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 7.3｜V2 发布候选
 
+**状态：完成。**
+
 - Input：无高/中等级审查问题的候选。
 - Output：版本升级、确定性胶囊、ZIP、校验文件和 GitHub Release 候选。
 - Risk：仅因“能生成两个项目”就跳过清理和恢复门禁。
@@ -471,9 +473,9 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–6；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；C 工具链中断保留可检查/可丢弃证据，发布后清理中断可经目标摘要复核后幂等恢复。
-- Tests：本地全量为 268 passed、4 skipped；Task 7.2 审查修正完整候选摘要曾忽略未知空目录和候选根重解析点的问题，相关装配、适配器、Finalize 与恢复安全回归为 36 passed、20 subtests passed。用户与作者指南由文档契约测试防漂移；Task 6.3 远端 `quality` run 34189286346 的 Ubuntu、Windows 核心质量与 FastAPI Linux 四组合三个 jobs 全部成功。
-- Next：Task 7.3，选择 V2 版本并构建发布候选；创建标签或 GitHub Release 前必须获得单独授权。
+- Done：Phase 1–7；FastAPI M-01 到 M-04 的 V1/V2 输入已逐字节得到相同项目；C 配方已在 Ubuntu/Windows 完成真实胶囊全链路；C 工具链中断与发布后清理中断均有安全恢复路径；`v2.0.0-rc.1` 已作为 GitHub prerelease 发布。
+- Tests：本地全量为 268 passed、4 skipped；相关装配、适配器、Finalize 与恢复安全回归为 36 passed、20 subtests passed。标签发布 `release-capsule` run 34192475881 的 Ubuntu、Windows 核心质量、FastAPI Linux 四组合、确定性资产构建与 GitHub Release 发布全部成功。ZIP 的两次独立本地构建逐字节一致，SHA-256 为 `eb6a86b0ee5b126d9824f7b59827e3c99559bd6b7f440b6b4251fc14f4fc845b`。
+- Next：收集 RC 使用反馈；只有在反馈与回归门禁通过后才评估 `v2.0.0` 稳定版。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；托管 Ubuntu/Windows 工具链已验证，具体 GCC/Clang/MSVC 最低版本仍待兼容矩阵冻结。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 
