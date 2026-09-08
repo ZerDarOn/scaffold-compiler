@@ -67,7 +67,10 @@ existing file, creates a project, or starts capsule self-cleanup. You can also c
 }
 ```
 
-The target must not already exist, and its parent must exist. On Windows PowerShell:
+The target must not already exist, and its parent must exist. On Windows, the derived hidden
+workspace path is limited to 120 UTF-16 code units so legacy build tools and safe cleanup retain
+enough path budget; choose a shorter target parent or project directory name when this preflight
+rejects a path. On Windows PowerShell:
 
 ```powershell
 $env:SCAFFOLD_COMPILER_UV = (Get-Command uv).Source
@@ -181,7 +184,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.1.0-rc.1 `
+  --destination .\dist\scaffold-compiler-2.1.0-rc.2 `
   --archive
 ```
 

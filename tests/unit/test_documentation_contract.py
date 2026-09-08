@@ -18,7 +18,7 @@ class DocumentationContractTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-    def test_user_guide_covers_both_recipes_and_the_complete_public_lifecycle(self) -> None:
+    def test_user_guide_covers_all_recipes_and_the_complete_public_lifecycle(self) -> None:
         for recipe_id in ("python-fastapi-service", "c-cmake-cli", "go-cli"):
             self.assertIn(recipe_id, self.user_guide)
         for command in ("init", "preview", "run", "inspect", "discard", "cleanup"):
@@ -33,6 +33,8 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("does not delete the published target", normalized_user_guide)
         self.assertIn("existing file is never overwritten", normalized_user_guide)
         self.assertIn("does not arm capsule self-cleanup", normalized_user_guide)
+        self.assertIn("example.com/example-tool", self.user_guide)
+        self.assertIn("120 UTF-16 code units", self.user_guide)
         self.assertIn("docs/user_guide.md", self.readme)
 
     def test_author_guide_preserves_the_trusted_data_only_extension_boundary(self) -> None:

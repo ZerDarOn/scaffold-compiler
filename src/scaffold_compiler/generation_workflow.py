@@ -46,6 +46,10 @@ from scaffold_compiler.validation_workspace import (
     cleanup_validation_workspace,
     prepare_validation_workspace,
 )
+from scaffold_compiler.workspace_path_budget import (
+    WorkspacePathBudgetError,
+    validate_workspace_path_budget,
+)
 
 LOGGER = logging.getLogger(__name__)
 _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
@@ -53,6 +57,10 @@ _RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 
 class GenerationWorkflowError(RuntimeError):
     """Raised when a coordinated V1 run cannot reach a clean terminal state."""
+
+
+class GenerationPreflightError(GenerationWorkflowError):
+    """Raised when generation is rejected before its first side effect."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +149,10 @@ def execute_generation_transaction(
         target.name,
     )
     workspace = target.parent / f".{target.name}.scaffold-{run_id}"
+    try:
+        validate_workspace_path_budget(workspace, run_id=run_id)
+    except WorkspacePathBudgetError as error:
+        raise GenerationPreflightError(str(error)) from error
     lock_store = TargetLockStore(target)
     lock = lock_store.acquire(
         run_id=run_id,

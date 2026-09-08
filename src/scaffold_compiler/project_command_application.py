@@ -20,7 +20,7 @@ from scaffold_compiler.failed_workspace_recovery import (
     discard_failed_workspace,
     inspect_failed_workspace,
 )
-from scaffold_compiler.generation_workflow import CompletedGeneration
+from scaffold_compiler.generation_workflow import CompletedGeneration, GenerationPreflightError
 from scaffold_compiler.interactive_configuration import (
     ConfigurationInitializationError,
     write_interactive_configuration,
@@ -146,6 +146,16 @@ class ProjectCommandApplication:
         run_id = self._run_id_factory()
         try:
             runtime_context = self._validation_runtime_factory(configuration, recipe, run_id)
+        except Exception as error:
+            LOGGER.error(
+                "project_validation_runtime_initialization_failed "
+                "run_id=%s recipe_id=%s error_type=%s",
+                run_id,
+                recipe.recipe_id,
+                type(error).__name__,
+            )
+            return CommandOutcome(1, "Recipe validation runtime could not be initialized.")
+        try:
             completed = self._generation_runner(
                 configuration,
                 recipe,
@@ -155,6 +165,13 @@ class ProjectCommandApplication:
                 validation_registry=self._validation_registry,
                 validation_runtime_context=runtime_context,
             )
+        except GenerationPreflightError as error:
+            LOGGER.warning(
+                "project_generation_preflight_rejected run_id=%s recipe_id=%s",
+                run_id,
+                recipe.recipe_id,
+            )
+            return CommandOutcome(1, str(error))
         except Exception as error:
             LOGGER.error(
                 "project_non_interactive_run_failed run_id=%s recipe_id=%s error_type=%s",

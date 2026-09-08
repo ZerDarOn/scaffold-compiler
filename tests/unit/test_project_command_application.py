@@ -8,11 +8,12 @@ from typing import cast
 from unittest.mock import patch
 
 from scaffold_compiler.cleanup_recovery import CleanupRecoveryResult
+from scaffold_compiler.command_line_interface import CommandOutcome
 from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceDiscardResult,
     FailedWorkspaceInspection,
 )
-from scaffold_compiler.generation_workflow import CompletedGeneration
+from scaffold_compiler.generation_workflow import CompletedGeneration, GenerationPreflightError
 from scaffold_compiler.project_assembly_adapter_registry import (
     build_project_assembly_adapter_registry,
 )
@@ -181,6 +182,62 @@ class ProjectCommandApplicationTests(unittest.TestCase):
             self.assertEqual(captured["run_id"], "generic-run")
             self.assertIs(captured["validation_runtime_context"], runtime_context)
             self.assertIs(captured["runtime_configuration"], configuration)
+
+    def test_run_reports_preflight_failure_without_claiming_a_workspace_exists(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root, config_path = _write_fixture(root)
+            application = _application(
+                root,
+                catalog_root,
+                generation_runner=cast(
+                    ProjectGenerationRunner,
+                    lambda *args, **kwargs: (_ for _ in ()).throw(
+                        GenerationPreflightError(
+                            "Windows generation path is too long; "
+                            "choose a shorter target directory."
+                        )
+                    ),
+                ),
+                runtime_factory=lambda *args: object(),
+            )
+
+            outcome = application.run_non_interactive(config_path)
+
+            self.assertEqual(outcome.exit_code, 1)
+            self.assertIn("choose a shorter target directory", outcome.message)
+            self.assertNotIn("failed workspace", outcome.message)
+
+    def test_run_reports_runtime_initialization_failure_without_claiming_a_workspace(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root, config_path = _write_fixture(root)
+            generation_runner_called = False
+
+            def generation_runner(*args: object, **kwargs: object) -> CompletedGeneration:
+                nonlocal generation_runner_called
+                generation_runner_called = True
+                raise AssertionError("generation runner must not run")
+
+            def runtime_factory(*args: object) -> object:
+                raise ValueError("private runtime detail")
+
+            application = _application(
+                root,
+                catalog_root,
+                generation_runner=generation_runner,
+                runtime_factory=runtime_factory,
+            )
+
+            outcome = application.run_non_interactive(config_path)
+
+            self.assertEqual(
+                outcome,
+                CommandOutcome(1, "Recipe validation runtime could not be initialized."),
+            )
+            self.assertFalse(generation_runner_called)
+            self.assertNotIn("private runtime detail", outcome.message)
+            self.assertNotIn("workspace", outcome.message)
 
     def test_recovery_commands_reuse_the_exact_workspace_services(self) -> None:
         with TemporaryDirectory() as directory:

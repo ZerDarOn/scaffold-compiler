@@ -43,8 +43,10 @@ command. Review the generated JSON before using either one.
 ## Write a configuration manually
 
 Use schema 2 for all new projects. The target directory must not exist, while its parent must exist.
-Relative paths are resolved from the command's working directory. Specify answers explicitly when
-you want the configuration to remain obvious during review.
+Relative paths are resolved from the command's working directory. On Windows, the derived hidden
+workspace path must not exceed 120 UTF-16 code units; use a shorter target parent or project
+directory name if preflight rejects it. The rejection occurs before a lock or workspace is created.
+Specify answers explicitly when you want the configuration to remain obvious during review.
 
 ### FastAPI without PostgreSQL or Docker
 
@@ -93,6 +95,28 @@ C recipe answers are:
 - `target_name`: a portable lowercase C identifier matching `[a-z][a-z0-9_]{0,62}`; when omitted
   it is derived from the project name.
 - `strict_warnings`: a JSON boolean; the default is `true`.
+
+### Go CLI
+
+```json
+{
+  "schema_version": 2,
+  "recipe": "go-cli",
+  "project_name": "Example Tool",
+  "target_directory": "./example-tool",
+  "answers": {
+    "binary_name": "example-tool",
+    "module_path": "example.com/example-tool"
+  }
+}
+```
+
+Go recipe answers are:
+
+- `binary_name`: a portable lowercase executable name matching `[a-z][a-z0-9-]{0,62}`; when
+  omitted it is derived from the project name.
+- `module_path`: a portable lowercase module path with a DNS-style host and at least one path
+  segment; the default is `example.com/<binary-name>`.
 
 Schema 1 FastAPI configuration remains accepted for compatibility, but it cannot select another
 recipe. Do not mix legacy fields (`package_name`, `database`, `container`) with schema 2 fields.

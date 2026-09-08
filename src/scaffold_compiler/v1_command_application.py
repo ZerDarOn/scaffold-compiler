@@ -22,6 +22,7 @@ from scaffold_compiler.fastapi_project_validation_adapter import (
 )
 from scaffold_compiler.generation_workflow import (
     CompletedGeneration,
+    GenerationPreflightError,
     execute_non_interactive_generation,
 )
 from scaffold_compiler.project_configuration import (
@@ -154,6 +155,9 @@ class V1CommandApplication:
                 validator=validator,
                 catalog_root=self._catalog_root,
             )
+        except GenerationPreflightError as error:
+            LOGGER.warning("v1_generation_preflight_rejected run_id=%s", run_id)
+            return CommandOutcome(1, str(error))
         except Exception as error:
             LOGGER.error(
                 "v1_non_interactive_run_failed run_id=%s error_type=%s",

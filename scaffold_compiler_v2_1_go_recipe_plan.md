@@ -129,7 +129,7 @@ ADR-GO-2
 - Tests：本地全量为 288 passed、4 skipped、245 subtests passed；Go 真实 `init → preview → gofmt/test/build/run → Finalize → self-cleanup` 通过。
 - CI：主分支 quality `34205711908` 在固定 Go 1.22.12 的 Ubuntu/Windows 与 Linux 四种真实发布组合上全部通过；标签 release-capsule `34206043819` 的五个任务全部通过。
 - Release：`v2.1.0-rc.1` 已作为 prerelease 发布，胶囊 SHA-256 为 `4c07c3a2dbc24d9c818b57c64588d294129f43fca2bea3b2cf7a09a7574038c4`。
-- Review：无剩余中高等级发现；Windows 8.3 临时路径造成的测试误报已通过规范化 Path 断言修复并由 Windows CI 验证。
-- Next：保留 `v2.1.0-rc.1` 观察窗口；没有新缺陷时再单独评审并发布 V2.1 stable。
+- Review：RC1 资产审查发现 Windows 深目标路径会耗尽传统工具路径预算；系统安全拒绝清理且未误删，RC2 增加事务前置路径预算门。
+- Next：完成 `v2.1.0-rc.2` 双平台与下载资产验收后，再决定 V2.1 stable。
 - Debt：生成项目的 CI 使用 Go 1.22.x；编译器仓库 CI 固定 Go 1.22.12，后续升级需显式评审。
 - Rollback point：`v2.0.0` 正式标签与发布资产不移动。

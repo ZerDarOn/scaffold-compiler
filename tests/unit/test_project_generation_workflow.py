@@ -5,13 +5,17 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
     CandidateFileRecord,
     calculate_candidate_digest,
 )
-from scaffold_compiler.generation_workflow import GenerationWorkflowError
+from scaffold_compiler.generation_workflow import (
+    GenerationWorkflowError,
+    execute_generation_transaction,
+)
 from scaffold_compiler.project_assembly_adapter_registry import (
     ProjectAssemblyRequest,
     build_project_assembly_adapter_registry,
@@ -28,6 +32,7 @@ from scaffold_compiler.project_validation_adapter_registry import (
 )
 from scaffold_compiler.recipe_project_configuration import RecipeProjectConfiguration
 from scaffold_compiler.validation import ValidationCheck, ValidationReport, ValidationStatus
+from scaffold_compiler.workspace_path_budget import WorkspacePathBudgetError
 
 
 def _recipe() -> ProjectRecipe:
@@ -215,6 +220,44 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
 
             self.assertFalse(configuration.target_directory.exists())
             self.assertEqual(tuple(root.glob(".delivery.scaffold-*")), ())
+
+    def test_transaction_rejects_unsafe_windows_path_before_any_side_effect(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = (root / "delivery").resolve()
+            expected_workspace = root.resolve() / ".delivery.scaffold-path-run"
+            plan_compiler_called = False
+
+            def plan_compiler() -> tuple[object, object]:
+                nonlocal plan_compiler_called
+                plan_compiler_called = True
+                raise AssertionError("plan compiler must not run")
+
+            with (
+                patch(
+                    "scaffold_compiler.generation_workflow.validate_workspace_path_budget",
+                    side_effect=WorkspacePathBudgetError(
+                        "Windows generation path is too long; choose a shorter target directory."
+                    ),
+                ) as path_validator,
+                patch("scaffold_compiler.generation_workflow.TargetLockStore.acquire") as acquire,
+                self.assertRaises(GenerationWorkflowError),
+            ):
+                execute_generation_transaction(
+                    target=target,
+                    configuration_digest="0" * 64,
+                    run_id="path-run",
+                    plan_compiler=plan_compiler,  # type: ignore[arg-type]
+                    candidate_materializer=lambda *_args: None,  # type: ignore[arg-type]
+                    validator=lambda *_args: None,  # type: ignore[arg-type]
+                )
+
+            path_validator.assert_called_once_with(expected_workspace, run_id="path-run")
+            acquire.assert_not_called()
+            self.assertFalse(plan_compiler_called)
+            self.assertFalse(target.exists())
+            self.assertFalse(expected_workspace.exists())
+            self.assertEqual(tuple(root.iterdir()), ())
 
 
 if __name__ == "__main__":

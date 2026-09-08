@@ -17,7 +17,11 @@ from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceDiscardResult,
     FailedWorkspaceInspection,
 )
-from scaffold_compiler.generation_workflow import CandidateValidator, CompletedGeneration
+from scaffold_compiler.generation_workflow import (
+    CandidateValidator,
+    CompletedGeneration,
+    GenerationPreflightError,
+)
 from scaffold_compiler.project_configuration import DatabaseChoice, ProjectConfiguration
 from scaffold_compiler.session_state_store import FailureStage, SessionState
 from scaffold_compiler.v1_command_application import GenerationRunner, V1CommandApplication
@@ -134,6 +138,48 @@ class V1CommandApplicationTests(unittest.TestCase):
 
             self.assertEqual(malformed, CommandOutcome(1, "Configuration could not be loaded."))
             self.assertEqual(missing, CommandOutcome(1, "Configuration could not be loaded."))
+
+    def test_preflight_failure_does_not_claim_a_workspace_exists(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root = root / "blueprints"
+            catalog_root.mkdir()
+            uv_executable = root / "uv"
+            uv_executable.write_bytes(b"uv")
+            config = root / "project.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "project_name": "Example API",
+                        "package_name": "example",
+                        "target_directory": "delivery",
+                        "database": "none",
+                        "container": "none",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def reject_preflight(*args: object, **kwargs: object) -> CompletedGeneration:
+                raise GenerationPreflightError(
+                    "Windows generation path is too long; choose a shorter target directory."
+                )
+
+            application = V1CommandApplication(
+                catalog_root=catalog_root,
+                working_directory=root,
+                home_directory=root / "home",
+                uv_executable=uv_executable,
+                environment={},
+                generation_runner=reject_preflight,
+                run_id_factory=lambda: "preflight-run",
+            )
+
+            outcome = application.run_non_interactive(config)
+
+            self.assertEqual(outcome.exit_code, 1)
+            self.assertIn("choose a shorter target directory", outcome.message)
+            self.assertNotIn("failed workspace", outcome.message)
 
     def test_preview_is_deterministic_and_does_not_create_a_workspace(self) -> None:
         with TemporaryDirectory() as directory:
