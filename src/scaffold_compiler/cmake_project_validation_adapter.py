@@ -28,9 +28,7 @@ class CMakeValidationRuntime:
     process_runner: ValidationProcessRunner = run_controlled_process
 
 
-def build_cmake_project_validation_adapter_registration() -> (
-    ProjectValidationAdapterRegistration
-):
+def build_cmake_project_validation_adapter_registration() -> ProjectValidationAdapterRegistration:
     """Register the fixed CMake validation gates with a trusted adapter."""
     return ProjectValidationAdapterRegistration(
         adapter_key=CMAKE_VALIDATION_ADAPTER_KEY,
