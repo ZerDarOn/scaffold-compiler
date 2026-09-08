@@ -42,6 +42,16 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Install locked development environment
         run: uv sync --extra dev --locked
+      - name: Require CMake toolchain
+        shell: pwsh
+        run: |
+          cmake --version
+          ctest --version
+          ninja --version
+          $compiler = Get-Command cc,gcc,clang,cl -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if ($null -eq $compiler) { throw "A C compiler is required." }
+          Write-Output "C compiler: $($compiler.Source)"
       - name: Check formatting
         run: uv run --frozen ruff format --check .
       - name: Lint
@@ -55,6 +65,7 @@ jobs:
           tests/unit
           tests/integration
           tests/golden_projects
+          tests/acceptance/test_cmake_disposable_release_workflow.py
           tests/acceptance/test_four_combination_workflow.py
           tests/acceptance/test_failed_release_recovery_workflow.py
       - name: Annotate failed core tests

@@ -421,6 +421,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 6.2｜C 双平台端到端验收
 
+**状态：进行中（真实胶囊验收已接入 Linux/Windows CI，等待远端证据）。**
+
 - Input：一次性发布胶囊与 C 配方。
 - Output：Windows/Linux 从 preview 到编译、CTest、运行、Finalize 和胶囊清理的独立结果。
 - Risk：只在开发仓库或单一编译器环境通过。
@@ -463,7 +465,7 @@ C 配方使用同一公共封装，但答案属于自身：
 
 - Done：Phase 1–5；`c-cmake-cli` 已具备 C11 黄金项目、可选严格警告，以及固定 configure、build、CTest、产物运行四门的受信验证适配器；构建目录仅位于运行所有权保护的验证工作区。
 - Tests：本地最终全量回归为 255 passed、3 skipped；CMake 聚焦测试另含 5 个通过的 subtests，覆盖工具缺失、逐阶段失败短路、超时、输出上限、产物输出契约和候选变更。旧 FastAPI 胶囊验收在最终全量中已再次通过。
-- Next：Phase 6，先在 GitHub Actions 的 Linux/Windows 主机运行 C 双平台真实构建，再执行 FastAPI 四组合等价回归矩阵。
+- Next：等待 GitHub Actions 的 Linux/Windows C 胶囊真实构建结果；通过后固化编译器证据并继续跨配方故障恢复。
 - Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；本机无 CMake/Ninja/C 编译器，具体 GCC/Clang/MSVC 下限等待双平台 CI 证据确认。
 - Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 

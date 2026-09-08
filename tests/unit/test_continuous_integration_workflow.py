@@ -28,6 +28,11 @@ class ContinuousIntegrationWorkflowTests(unittest.TestCase):
         self.assertNotIn("continue-on-error", workflow)
         self.assertNotIn("pull_request_target", workflow)
         self.assertIn("--junitxml=core-test-results.xml", workflow)
+        self.assertIn("- name: Require CMake toolchain", workflow)
+        self.assertIn("cmake --version", workflow)
+        self.assertIn("ctest --version", workflow)
+        self.assertIn("ninja --version", workflow)
+        self.assertIn("tests/acceptance/test_cmake_disposable_release_workflow.py", workflow)
         self.assertIn("::error title=pytest failure::", workflow)
 
         references = ACTION_REFERENCE.findall(workflow)
