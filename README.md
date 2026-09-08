@@ -20,6 +20,9 @@ The FastAPI recipe retains the four V1-compatible combinations:
 The second reference recipe generates a C11/CMake CLI project and is runtime-verified with CMake,
 Ninja, CTest, and a platform C compiler on both Linux and Windows CI.
 
+The third reference recipe generates a standard-library Go CLI and validates formatting, tests,
+build output, and executable behavior without downloading project dependencies.
+
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
 For practical operation, see the [`docs/user_guide.md`](docs/user_guide.md). Maintainers adding a
@@ -35,6 +38,8 @@ language or project family should follow
 - For Docker choices, a Docker CLI and running engine. The CLI may be supplied by absolute path in
   `SCAFFOLD_COMPILER_DOCKER`. M-02/M-04 acceptance builds and runs real containers; an unavailable
   engine or incomplete cleanup causes generation to fail safely.
+- For Go projects, Go 1.22 or newer with `go` and `gofmt` on `PATH`, or explicit absolute paths in
+  `SCAFFOLD_COMPILER_GO` and `SCAFFOLD_COMPILER_GOFMT`.
 
 ## Run a release capsule
 
@@ -176,7 +181,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.0.0 `
+  --destination .\dist\scaffold-compiler-2.1.0-rc.1 `
   --archive
 ```
 

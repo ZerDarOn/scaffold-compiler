@@ -15,6 +15,8 @@ from scaffold_compiler.release_entry import (
     resolve_cmake_executable,
     resolve_ctest_executable,
     resolve_docker_executable,
+    resolve_go_executable,
+    resolve_gofmt_executable,
     resolve_uv_executable,
 )
 
@@ -312,6 +314,23 @@ class ReleaseEntryTests(unittest.TestCase):
             self.assertEqual(
                 resolve_ctest_executable({"SCAFFOLD_COMPILER_CTEST": str(ctest)}),
                 ctest.resolve(),
+            )
+
+    def test_go_tool_resolution_uses_only_fixed_settings_or_path(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            go = root / "go"
+            gofmt = root / "gofmt"
+            go.write_bytes(b"go")
+            gofmt.write_bytes(b"gofmt")
+
+            self.assertEqual(
+                resolve_go_executable({"SCAFFOLD_COMPILER_GO": str(go)}),
+                go.resolve(),
+            )
+            self.assertEqual(
+                resolve_gofmt_executable({"SCAFFOLD_COMPILER_GOFMT": str(gofmt)}),
+                gofmt.resolve(),
             )
 
     def test_executable_resolution_uses_the_selected_environment_path(self) -> None:

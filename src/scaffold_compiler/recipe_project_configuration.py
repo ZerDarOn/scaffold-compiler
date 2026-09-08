@@ -23,6 +23,7 @@ from scaffold_compiler.project_recipe_registry import (
     CMAKE_ANSWER_PARSER_KEY,
     FASTAPI_ANSWER_PARSER_KEY,
     FASTAPI_RECIPE_ID,
+    GO_ANSWER_PARSER_KEY,
     ProjectRecipe,
     ProjectRecipeRegistry,
     ProjectRecipeRegistryError,
@@ -37,7 +38,12 @@ _V2_MARKER_FIELDS: Final = frozenset({"answers", "recipe", "schema_version"})
 _LEGACY_ONLY_FIELDS: Final = frozenset({"container", "database", "package_name"})
 _FASTAPI_ANSWER_FIELDS: Final = frozenset({"database", "delivery", "package_name"})
 _CMAKE_ANSWER_FIELDS: Final = frozenset({"strict_warnings", "target_name"})
+_GO_ANSWER_FIELDS: Final = frozenset({"binary_name", "module_path"})
 _CMAKE_TARGET_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
+_GO_BINARY_NAME_PATTERN: Final = re.compile(r"^[a-z][a-z0-9-]{0,62}$")
+_GO_MODULE_HOST_LABEL_PATTERN: Final = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_GO_MODULE_SEGMENT_PATTERN: Final = re.compile(r"^[a-z0-9](?:[a-z0-9._-]{0,61}[a-z0-9])?$")
+_GO_MODULE_PATH_MAX_LENGTH: Final = 200
 
 JSONScalar: TypeAlias = bool | int | float | str | None
 JSONValue: TypeAlias = JSONScalar | list["JSONValue"] | dict[str, "JSONValue"]
@@ -129,6 +135,7 @@ def build_builtin_answer_normalizers() -> Mapping[str, AnswerNormalizer]:
     return {
         FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers,
         CMAKE_ANSWER_PARSER_KEY: _normalize_cmake_answers,
+        GO_ANSWER_PARSER_KEY: _normalize_go_answers,
     }
 
 
@@ -279,6 +286,51 @@ def _normalize_cmake_answers(
             "Strict warnings must be a boolean.",
         )
     return {"strict_warnings": strict_warnings, "target_name": target_name}
+
+
+def _normalize_go_answers(
+    raw_answers: Mapping[str, object],
+    project_name: str,
+) -> Mapping[str, JSONValue]:
+    if set(raw_answers).difference(_GO_ANSWER_FIELDS):
+        _raise_configuration_error(
+            "answers",
+            "unknown_answer_fields",
+            "Recipe answers contain unsupported fields.",
+        )
+    default_binary_name = re.sub(r"[^a-z0-9]+", "-", project_name.lower()).strip("-")
+    binary_name = raw_answers.get("binary_name", default_binary_name)
+    if not isinstance(binary_name, str) or not _GO_BINARY_NAME_PATTERN.fullmatch(binary_name):
+        _raise_configuration_error(
+            "binary_name",
+            "invalid_binary_name",
+            "Go binary name is not portable.",
+        )
+    module_path = raw_answers.get("module_path", f"example.com/{binary_name}")
+    if not isinstance(module_path, str) or not _is_portable_go_module_path(module_path):
+        _raise_configuration_error(
+            "module_path",
+            "invalid_module_path",
+            "Go module path is not portable.",
+        )
+    return {"binary_name": binary_name, "module_path": module_path}
+
+
+def _is_portable_go_module_path(module_path: str) -> bool:
+    if len(module_path) > _GO_MODULE_PATH_MAX_LENGTH or "\\" in module_path:
+        return False
+    segments = module_path.split("/")
+    if len(segments) < 2:
+        return False
+    host, *path_segments = segments
+    host_labels = host.split(".")
+    return (
+        len(host_labels) >= 2
+        and all(_GO_MODULE_HOST_LABEL_PATTERN.fullmatch(label) is not None for label in host_labels)
+        and all(
+            _GO_MODULE_SEGMENT_PATTERN.fullmatch(segment) is not None for segment in path_segments
+        )
+    )
 
 
 def _normalize_choice(raw_choice: object, *, field: str) -> str:

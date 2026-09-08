@@ -1,0 +1,16 @@
+# ${project_name}
+
+A small Go command-line project that uses only the standard library.
+
+## Run
+
+```sh
+go run .
+```
+
+## Test and build
+
+```sh
+go test ./...
+go build -o bin/${binary_name} .
+```

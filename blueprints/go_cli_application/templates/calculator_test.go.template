@@ -1,0 +1,10 @@
+package main
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+	t.Parallel()
+	if result := add(20, 22); result != 42 {
+		t.Fatalf("add(20, 22) = %d; want 42", result)
+	}
+}

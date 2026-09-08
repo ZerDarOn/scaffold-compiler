@@ -5,6 +5,7 @@ import unittest
 from scaffold_compiler.project_recipe_registry import (
     CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
+    GO_RECIPE_ID,
     ProjectRecipeRegistryError,
     build_builtin_project_recipe_registry,
     build_project_recipe_registry,
@@ -149,6 +150,23 @@ class ProjectRecipeRegistryTests(unittest.TestCase):
             set(recipe.allowed_validation_gates),
             {"cmake-configure", "cmake-build", "ctest", "executable-run"},
         )
+
+    def test_builtin_go_recipe_is_closed_to_its_blueprints_and_validation_gates(self) -> None:
+        recipe = build_builtin_project_recipe_registry().get(GO_RECIPE_ID)
+
+        self.assertEqual(recipe.version, "1.0.0")
+        self.assertEqual(recipe.answer_parser_key, "go-answers")
+        self.assertEqual(recipe.required_capabilities, ("go-cli-project",))
+        self.assertEqual(recipe.capability_rules, ())
+        self.assertEqual(
+            set(recipe.allowed_blueprint_ids),
+            {"go-project-quality", "go-cli-application"},
+        )
+        self.assertEqual(
+            set(recipe.allowed_validation_gates),
+            {"go-format", "go-test", "go-build", "go-executable-run"},
+        )
+        self.assertIn("Go 1.22 or newer", recipe.prerequisites)
 
 
 if __name__ == "__main__":

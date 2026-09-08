@@ -82,6 +82,19 @@ class InteractiveConfigurationTests(unittest.TestCase):
 
             self.assertEqual(path.read_text(encoding="utf-8"), "keep me")
 
+    def test_go_questionnaire_writes_defaults_through_the_strict_parser(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            path = self.initialize(root, "3\nExample Tool\ndelivery\n\n\n")
+
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["recipe"], "go-cli")
+            self.assertEqual(
+                payload["answers"],
+                {"binary_name": "example-tool", "module_path": "example.com/example-tool"},
+            )
+
     def test_end_of_input_creates_no_configuration_or_temporary_file(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

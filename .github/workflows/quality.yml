@@ -40,6 +40,11 @@ jobs:
           version: "0.12.9"
           enable-cache: true
           cache-dependency-glob: uv.lock
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.22.12"
+          cache: false
       - name: Install locked development environment
         run: uv sync --extra dev --locked
       - name: Require CMake toolchain
@@ -52,6 +57,10 @@ jobs:
             Select-Object -First 1
           if ($null -eq $compiler) { throw "A C compiler is required." }
           Write-Output "C compiler: $($compiler.Source)"
+      - name: Require Go toolchain
+        run: |
+          go version
+          gofmt -l blueprints/go_cli_application/templates/main.go.template
       - name: Check formatting
         run: uv run --frozen ruff format --check .
       - name: Lint
@@ -66,6 +75,7 @@ jobs:
           tests/integration
           tests/golden_projects
           tests/acceptance/test_cmake_disposable_release_workflow.py
+          tests/acceptance/test_go_disposable_release_workflow.py
           tests/acceptance/test_cmake_failed_release_recovery.py
           tests/acceptance/test_fastapi_v1_v2_equivalence.py
           tests/acceptance/test_four_combination_workflow.py

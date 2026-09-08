@@ -12,6 +12,7 @@ from typing import TextIO, TypeVar
 from scaffold_compiler.project_recipe_registry import (
     CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
+    GO_RECIPE_ID,
     ProjectRecipeRegistry,
 )
 from scaffold_compiler.recipe_project_configuration import (
@@ -37,9 +38,14 @@ def _collect_cmake_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]
     return _cmake_answers(source, sink)
 
 
+def _collect_go_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
+    return _go_answers(source, sink)
+
+
 _QUESTIONNAIRES: tuple[tuple[str, str, AnswerCollector], ...] = (
     (FASTAPI_RECIPE_ID, "Python FastAPI service", _collect_fastapi_answers),
     (CMAKE_RECIPE_ID, "C11/CMake command-line project", _collect_cmake_answers),
+    (GO_RECIPE_ID, "Go command-line project", _collect_go_answers),
 )
 
 
@@ -149,6 +155,25 @@ def _cmake_answers(input_stream: TextIO, output_stream: TextIO) -> dict[str, JSO
     answers: dict[str, JSONValue] = {"strict_warnings": strict_warnings}
     if target_name:
         answers["target_name"] = target_name
+    return answers
+
+
+def _go_answers(input_stream: TextIO, output_stream: TextIO) -> dict[str, JSONValue]:
+    binary_name = _ask_optional(
+        "Go binary name [derived from project name]: ",
+        input_stream=input_stream,
+        output_stream=output_stream,
+    )
+    module_path = _ask_optional(
+        "Go module path [example.com/<binary name>]: ",
+        input_stream=input_stream,
+        output_stream=output_stream,
+    )
+    answers: dict[str, JSONValue] = {}
+    if binary_name:
+        answers["binary_name"] = binary_name
+    if module_path:
+        answers["module_path"] = module_path
     return answers
 
 

@@ -169,3 +169,36 @@ CMAKE_GOLDEN_PROJECT_SPECIFICATIONS = (
         forbidden_cmake_tokens=(),
     ),
 )
+
+
+GO_REQUIRED_PATHS = frozenset(
+    {
+        ".editorconfig",
+        ".github/workflows/quality.yml",
+        ".gitignore",
+        "README.md",
+        "calculator.go",
+        "calculator_test.go",
+        "go.mod",
+        "main.go",
+    }
+)
+GO_GENERATOR_MARKERS = ("scaffold_compiler", "blueprint", "journal", "run_id")
+
+
+@dataclass(frozen=True, slots=True)
+class GoGoldenProjectSpecification:
+    matrix_id: str
+    required_paths: frozenset[str]
+    module_path: str
+    binary_name: str
+    expected_output: str
+
+
+GO_GOLDEN_PROJECT_SPECIFICATION = GoGoldenProjectSpecification(
+    matrix_id="GO-01",
+    required_paths=GO_REQUIRED_PATHS,
+    module_path="example.com/example-tool",
+    binary_name="example-tool",
+    expected_output="scaffold compiler go example\n",
+)

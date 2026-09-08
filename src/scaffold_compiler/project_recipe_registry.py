@@ -16,6 +16,10 @@ CMAKE_RECIPE_ID: Final = "c-cmake-cli"
 CMAKE_ANSWER_PARSER_KEY: Final = "cmake-answers"
 CMAKE_ASSEMBLY_ADAPTER_KEY: Final = "cmake-v1-assembly"
 CMAKE_VALIDATION_ADAPTER_KEY: Final = "cmake-v1-validation"
+GO_RECIPE_ID: Final = "go-cli"
+GO_ANSWER_PARSER_KEY: Final = "go-answers"
+GO_ASSEMBLY_ADAPTER_KEY: Final = "go-v1-assembly"
+GO_VALIDATION_ADAPTER_KEY: Final = "go-v1-validation"
 
 _IDENTIFIER_PATTERN: Final = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 _SEMANTIC_VERSION_PATTERN: Final = re.compile(
@@ -133,12 +137,21 @@ def build_project_recipe_registry(
 def build_builtin_project_recipe_registry() -> ProjectRecipeRegistry:
     """Return the registry shipped with this compiler version."""
     return build_project_recipe_registry(
-        [_FASTAPI_RECIPE_DECLARATION, _CMAKE_RECIPE_DECLARATION],
-        trusted_answer_parser_keys={FASTAPI_ANSWER_PARSER_KEY, CMAKE_ANSWER_PARSER_KEY},
-        trusted_assembly_adapter_keys={FASTAPI_ASSEMBLY_ADAPTER_KEY, CMAKE_ASSEMBLY_ADAPTER_KEY},
+        [_FASTAPI_RECIPE_DECLARATION, _CMAKE_RECIPE_DECLARATION, _GO_RECIPE_DECLARATION],
+        trusted_answer_parser_keys={
+            FASTAPI_ANSWER_PARSER_KEY,
+            CMAKE_ANSWER_PARSER_KEY,
+            GO_ANSWER_PARSER_KEY,
+        },
+        trusted_assembly_adapter_keys={
+            FASTAPI_ASSEMBLY_ADAPTER_KEY,
+            CMAKE_ASSEMBLY_ADAPTER_KEY,
+            GO_ASSEMBLY_ADAPTER_KEY,
+        },
         trusted_validation_adapter_keys={
             FASTAPI_VALIDATION_ADAPTER_KEY,
             CMAKE_VALIDATION_ADAPTER_KEY,
+            GO_VALIDATION_ADAPTER_KEY,
         },
     )
 
@@ -378,4 +391,18 @@ _CMAKE_RECIPE_DECLARATION: Final[Mapping[str, object]] = {
         "executable-run",
     ],
     "prerequisites": ["CMake 3.20 or newer", "Ninja 1.10 or newer", "A C11 compiler"],
+}
+
+_GO_RECIPE_DECLARATION: Final[Mapping[str, object]] = {
+    "schema_version": 1,
+    "id": GO_RECIPE_ID,
+    "version": "1.0.0",
+    "answer_parser": GO_ANSWER_PARSER_KEY,
+    "assembly_adapter": GO_ASSEMBLY_ADAPTER_KEY,
+    "validation_adapter": GO_VALIDATION_ADAPTER_KEY,
+    "required_capabilities": ["go-cli-project"],
+    "capability_rules": [],
+    "allowed_blueprints": ["go-project-quality", "go-cli-application"],
+    "allowed_validations": ["go-format", "go-test", "go-build", "go-executable-run"],
+    "prerequisites": ["Go 1.22 or newer"],
 }

@@ -11,10 +11,15 @@ capsule removes itself through an external, manifest-bound supervisor.
 |---|---|---|
 | `python-fastapi-service` | Python 3.14 FastAPI service | Python 3.11+ for the capsule and uv 0.12.9 |
 | `c-cmake-cli` | C11 command-line project with CMake presets and tests | Python 3.11+, CMake 3.20+, Ninja 1.10+, CTest, and a C11 compiler |
+| `go-cli` | Standard-library Go command-line project with tests | Python 3.11+ and Go 1.22+ |
 
 FastAPI can optionally add PostgreSQL persistence and Docker delivery. The C recipe can optionally
 enable compiler-specific strict warnings. Recipe choice is made once per run; capabilities from one
 recipe cannot be mixed into another.
+
+The Go recipe asks for a portable lowercase binary name and module path. Defaults are derived from
+the project name as `example.com/<binary-name>`. Validation fixes `GOTOOLCHAIN=local` and
+`GOWORK=off`; it does not download project dependencies or write build output into the candidate.
 
 ## Create a configuration interactively
 
@@ -116,6 +121,8 @@ $env:SCAFFOLD_COMPILER_UV = (Get-Command uv).Source
 $env:SCAFFOLD_COMPILER_DOCKER = (Get-Command docker).Source
 $env:SCAFFOLD_COMPILER_CMAKE = (Get-Command cmake).Source
 $env:SCAFFOLD_COMPILER_CTEST = (Get-Command ctest).Source
+$env:SCAFFOLD_COMPILER_GO = (Get-Command go).Source
+$env:SCAFFOLD_COMPILER_GOFMT = (Get-Command gofmt).Source
 ```
 
 Set only the overrides needed by the selected recipe, then execute:

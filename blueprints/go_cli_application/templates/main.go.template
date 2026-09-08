@@ -1,0 +1,10 @@
+package main
+
+import "fmt"
+
+func main() {
+	if add(20, 22) != 42 {
+		panic("calculator contract failed")
+	}
+	fmt.Println("scaffold compiler go example")
+}

@@ -76,6 +76,12 @@ def main(
         ctest_executable = (
             resolve_ctest_executable(selected_environment) if requires_external_tools else None
         )
+        go_executable = (
+            resolve_go_executable(selected_environment) if requires_external_tools else None
+        )
+        gofmt_executable = (
+            resolve_gofmt_executable(selected_environment) if requires_external_tools else None
+        )
         runtime_root = capsule.root if capsule is not None else Path(__file__).parents[2]
         try:
             selected_application = build_builtin_project_command_application(
@@ -86,6 +92,8 @@ def main(
                 docker_executable=docker_executable,
                 cmake_executable=cmake_executable,
                 ctest_executable=ctest_executable,
+                go_executable=go_executable,
+                gofmt_executable=gofmt_executable,
                 environment=selected_environment,
             )
         except (OSError, ValueError):
@@ -136,6 +144,16 @@ def resolve_cmake_executable(environment: Mapping[str, str]) -> Path | None:
 def resolve_ctest_executable(environment: Mapping[str, str]) -> Path | None:
     """Resolve an optional CTest executable from a fixed setting or PATH."""
     return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_CTEST", "ctest")
+
+
+def resolve_go_executable(environment: Mapping[str, str]) -> Path | None:
+    """Resolve an optional Go executable from a fixed setting or PATH."""
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_GO", "go")
+
+
+def resolve_gofmt_executable(environment: Mapping[str, str]) -> Path | None:
+    """Resolve an optional gofmt executable from a fixed setting or PATH."""
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_GOFMT", "gofmt")
 
 
 def _resolve_external_executable(

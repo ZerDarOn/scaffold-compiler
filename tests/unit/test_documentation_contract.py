@@ -19,7 +19,7 @@ class DocumentationContractTests(unittest.TestCase):
         )
 
     def test_user_guide_covers_both_recipes_and_the_complete_public_lifecycle(self) -> None:
-        for recipe_id in ("python-fastapi-service", "c-cmake-cli"):
+        for recipe_id in ("python-fastapi-service", "c-cmake-cli", "go-cli"):
             self.assertIn(recipe_id, self.user_guide)
         for command in ("init", "preview", "run", "inspect", "discard", "cleanup"):
             self.assertIn(f" {command} `", self.user_guide)

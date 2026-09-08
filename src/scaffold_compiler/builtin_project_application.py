@@ -16,6 +16,13 @@ from scaffold_compiler.fastapi_project_validation_adapter import (
     FastApiValidationRuntime,
     build_fastapi_project_validation_adapter_registration,
 )
+from scaffold_compiler.go_project_assembly_adapter import (
+    build_go_project_assembly_adapter_registry,
+)
+from scaffold_compiler.go_project_validation_adapter import (
+    GoValidationRuntime,
+    build_go_project_validation_adapter_registration,
+)
 from scaffold_compiler.project_assembly_adapter_registry import (
     build_project_assembly_adapter_registry,
 )
@@ -23,6 +30,7 @@ from scaffold_compiler.project_command_application import ProjectCommandApplicat
 from scaffold_compiler.project_recipe_registry import (
     CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
+    GO_RECIPE_ID,
     ProjectRecipe,
     build_builtin_project_recipe_registry,
 )
@@ -47,6 +55,8 @@ def build_builtin_project_command_application(
     docker_executable: Path | None,
     cmake_executable: Path | None,
     ctest_executable: Path | None,
+    go_executable: Path | None = None,
+    gofmt_executable: Path | None = None,
     environment: Mapping[str, str],
 ) -> ProjectCommandApplication:
     """Compose the generic application with every trusted built-in adapter."""
@@ -55,6 +65,7 @@ def build_builtin_project_command_application(
     recipe_registry = build_builtin_project_recipe_registry()
     fastapi_assembly_registry = build_fastapi_project_assembly_adapter_registry()
     cmake_assembly_registry = build_cmake_project_assembly_adapter_registry()
+    go_assembly_registry = build_go_project_assembly_adapter_registry()
 
     def validation_runtime_factory(
         configuration: RecipeProjectConfiguration,
@@ -62,6 +73,15 @@ def build_builtin_project_command_application(
         run_id: str,
     ) -> object:
         answers = configuration.answers
+        if recipe.recipe_id == GO_RECIPE_ID:
+            binary_name = answers.get("binary_name")
+            if not isinstance(binary_name, str):
+                raise ValueError("Go runtime answers are invalid.")
+            return GoValidationRuntime(
+                binary_name=binary_name,
+                go_executable=go_executable,
+                gofmt_executable=gofmt_executable,
+            )
         if recipe.recipe_id == CMAKE_RECIPE_ID:
             target_name = answers.get("target_name")
             if not isinstance(target_name, str):
@@ -98,12 +118,17 @@ def build_builtin_project_command_application(
         recipe_registry=recipe_registry,
         answer_normalizers=build_builtin_answer_normalizers(),
         assembly_registry=build_project_assembly_adapter_registry(
-            (*fastapi_assembly_registry.adapters, *cmake_assembly_registry.adapters)
+            (
+                *fastapi_assembly_registry.adapters,
+                *cmake_assembly_registry.adapters,
+                *go_assembly_registry.adapters,
+            )
         ),
         validation_registry=build_project_validation_adapter_registry(
             (
                 build_fastapi_project_validation_adapter_registration(),
                 build_cmake_project_validation_adapter_registration(),
+                build_go_project_validation_adapter_registration(),
             )
         ),
         validation_runtime_factory=validation_runtime_factory,

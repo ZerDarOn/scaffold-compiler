@@ -10,6 +10,7 @@ from scaffold_compiler.project_configuration import ConfigurationValidationError
 from scaffold_compiler.project_recipe_registry import (
     CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
+    GO_RECIPE_ID,
     build_builtin_project_recipe_registry,
     build_project_recipe_registry,
 )
@@ -58,6 +59,55 @@ def _c_recipe_record(version: str) -> dict[str, object]:
 
 
 class RecipeProjectConfigurationTests(unittest.TestCase):
+    def test_normalizes_builtin_go_answers_and_applies_portable_defaults(self) -> None:
+        with TemporaryDirectory() as directory:
+            configuration = parse_builtin_recipe_project_configuration(
+                {
+                    "schema_version": 2,
+                    "recipe": GO_RECIPE_ID,
+                    "project_name": "  Example   Tool  ",
+                    "target_directory": "example-tool",
+                    "answers": {},
+                },
+                working_directory=Path(directory),
+                home_directory=Path(directory) / "home",
+            )
+
+            self.assertEqual(configuration.recipe_id, GO_RECIPE_ID)
+            self.assertEqual(
+                configuration.answers,
+                {"binary_name": "example-tool", "module_path": "example.com/example-tool"},
+            )
+
+    def test_rejects_unsafe_or_nonportable_go_answers(self) -> None:
+        invalid_cases = (
+            ({"binary_name": "../tool"}, "invalid_binary_name"),
+            ({"binary_name": "UPPER"}, "invalid_binary_name"),
+            ({"binary_name": "a" * 64}, "invalid_binary_name"),
+            ({"module_path": "../module"}, "invalid_module_path"),
+            ({"module_path": "example.com/UPPER"}, "invalid_module_path"),
+            ({"module_path": "example.com/a b"}, "invalid_module_path"),
+            ({"module_path": "example-.com/tool"}, "invalid_module_path"),
+            ({"module_path": "example.-com/tool"}, "invalid_module_path"),
+            ({"extra": True}, "unknown_answer_fields"),
+        )
+        for answers, expected_code in invalid_cases:
+            with self.subTest(answers=answers), TemporaryDirectory() as directory:
+                with self.assertRaises(ConfigurationValidationError) as error_context:
+                    parse_builtin_recipe_project_configuration(
+                        {
+                            "schema_version": 2,
+                            "recipe": GO_RECIPE_ID,
+                            "project_name": "Example Tool",
+                            "target_directory": "example-tool",
+                            "answers": answers,
+                        },
+                        working_directory=Path(directory),
+                        home_directory=Path(directory) / "home",
+                    )
+
+                self.assertEqual(error_context.exception.code, expected_code)
+
     def test_normalizes_builtin_cmake_answers_and_applies_defaults(self) -> None:
         with TemporaryDirectory() as directory:
             configuration = parse_builtin_recipe_project_configuration(
