@@ -391,6 +391,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 5.3｜CMake 验证失败测试
 
+**状态：完成。**
+
 - Input：受控进程接口和 C 黄金项目。
 - Output：cmake 不存在、配置失败、编译失败、CTest 失败、运行结果错误、超时和输出上限测试。
 - Risk：只检查文件存在却声称 C 项目可用。
@@ -398,6 +400,8 @@ C 配方使用同一公共封装，但答案属于自身：
 - Flag：真实编译器副作用；TDD 失败测试。
 
 #### Task 5.4｜CMake 验证适配器最小实现
+
+**状态：完成。**
 
 - Input：Task 5.3。
 - Output：受控的 configure、build、CTest 和产物运行门，构建目录只位于验证环境。
@@ -457,10 +461,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–4 与 Task 5.1–5.2；`c-cmake-cli` 配方、C11 库/CLI/CTest 黄金项目、严格警告可选蓝图、跨平台 CI 模板和受信装配器已接入，未修改通用生命周期。
-- Tests：本地全量回归为 245 passed、3 skipped、216 subtests passed；两种严格警告模式的精确文件树、零残留、配置边界、CLI 预览、候选摘要和原静态安全扫描均通过。
-- Next：Task 5.3，为 CMake configure、build、CTest、产物运行、工具缺失、超时和输出上限编写受控进程失败测试。
-- Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；具体 GCC/Clang/MSVC 下限仍待双平台 CI 证据确认。
-- Rollback point：移除 CMake 配方注册、四个蓝图和装配器即可回退 Task 5.1–5.2；FastAPI 与通用生命周期不受影响。
+- Done：Phase 1–5；`c-cmake-cli` 已具备 C11 黄金项目、可选严格警告，以及固定 configure、build、CTest、产物运行四门的受信验证适配器；构建目录仅位于运行所有权保护的验证工作区。
+- Tests：本地最终全量回归为 255 passed、3 skipped；CMake 聚焦测试另含 5 个通过的 subtests，覆盖工具缺失、逐阶段失败短路、超时、输出上限、产物输出契约和候选变更。旧 FastAPI 胶囊验收在最终全量中已再次通过。
+- Next：Phase 6，先在 GitHub Actions 的 Linux/Windows 主机运行 C 双平台真实构建，再执行 FastAPI 四组合等价回归矩阵。
+- Debt：最低版本已冻结为 CMake 3.20、Ninja 1.10 与兼容 C11 的编译器；本机无 CMake/Ninja/C 编译器，具体 GCC/Clang/MSVC 下限等待双平台 CI 证据确认。
+- Rollback point：移除 CMake 配方注册、四个蓝图、装配/验证适配器与 CLI 工具发现即可回退 Phase 5；FastAPI 与通用生命周期不受影响。
 
-Phase 5 C/CMake assembly checkpoint complete. Proceed with the controlled validator?
+Phase 5 C/CMake reference recipe complete. Proceed with dual-recipe real acceptance?

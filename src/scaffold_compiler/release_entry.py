@@ -60,14 +60,19 @@ def main(
             stderr=selected_stderr,
         )
     if selected_application is None:
-        requires_uv = selected_arguments[:1] == ["run"]
-        uv_executable = resolve_uv_executable(selected_environment) if requires_uv else None
-        docker_executable = resolve_docker_executable(selected_environment) if requires_uv else None
-        if requires_uv and uv_executable is None:
-            selected_stderr.write(
-                "uv was not found; set SCAFFOLD_COMPILER_UV to an existing executable.\n"
-            )
-            return 1
+        requires_external_tools = selected_arguments[:1] == ["run"]
+        uv_executable = (
+            resolve_uv_executable(selected_environment) if requires_external_tools else None
+        )
+        docker_executable = (
+            resolve_docker_executable(selected_environment) if requires_external_tools else None
+        )
+        cmake_executable = (
+            resolve_cmake_executable(selected_environment) if requires_external_tools else None
+        )
+        ctest_executable = (
+            resolve_ctest_executable(selected_environment) if requires_external_tools else None
+        )
         runtime_root = capsule.root if capsule is not None else Path(__file__).parents[2]
         try:
             selected_application = build_builtin_project_command_application(
@@ -76,6 +81,8 @@ def main(
                 home_directory=Path.home(),
                 uv_executable=uv_executable,
                 docker_executable=docker_executable,
+                cmake_executable=cmake_executable,
+                ctest_executable=ctest_executable,
                 environment=selected_environment,
             )
         except (OSError, ValueError):
@@ -113,6 +120,16 @@ def resolve_uv_executable(environment: Mapping[str, str]) -> Path | None:
 def resolve_docker_executable(environment: Mapping[str, str]) -> Path | None:
     """Resolve an optional Docker CLI without requiring its daemon to be available."""
     return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_DOCKER", "docker")
+
+
+def resolve_cmake_executable(environment: Mapping[str, str]) -> Path | None:
+    """Resolve an optional CMake executable from a fixed setting or PATH."""
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_CMAKE", "cmake")
+
+
+def resolve_ctest_executable(environment: Mapping[str, str]) -> Path | None:
+    """Resolve an optional CTest executable from a fixed setting or PATH."""
+    return _resolve_external_executable(environment, "SCAFFOLD_COMPILER_CTEST", "ctest")
 
 
 def _resolve_external_executable(

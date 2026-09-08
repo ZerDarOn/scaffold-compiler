@@ -12,6 +12,8 @@ from scaffold_compiler.capsule_package import build_capsule_package
 from scaffold_compiler.command_line_interface import CommandOutcome, ScaffoldCommandService
 from scaffold_compiler.release_entry import (
     main,
+    resolve_cmake_executable,
+    resolve_ctest_executable,
     resolve_docker_executable,
     resolve_uv_executable,
 )
@@ -221,6 +223,23 @@ class ReleaseEntryTests(unittest.TestCase):
             )
             self.assertIsNone(
                 resolve_docker_executable({"SCAFFOLD_COMPILER_DOCKER": str(root / "missing")})
+            )
+
+    def test_cmake_tool_resolution_uses_only_fixed_settings_or_path(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            cmake = root / "cmake"
+            ctest = root / "ctest"
+            cmake.write_bytes(b"cmake")
+            ctest.write_bytes(b"ctest")
+
+            self.assertEqual(
+                resolve_cmake_executable({"SCAFFOLD_COMPILER_CMAKE": str(cmake)}),
+                cmake.resolve(),
+            )
+            self.assertEqual(
+                resolve_ctest_executable({"SCAFFOLD_COMPILER_CTEST": str(ctest)}),
+                ctest.resolve(),
             )
 
     def test_executable_resolution_uses_the_selected_environment_path(self) -> None:

@@ -8,6 +8,10 @@ from pathlib import Path
 from scaffold_compiler.cmake_project_assembly_adapter import (
     build_cmake_project_assembly_adapter_registry,
 )
+from scaffold_compiler.cmake_project_validation_adapter import (
+    CMakeValidationRuntime,
+    build_cmake_project_validation_adapter_registration,
+)
 from scaffold_compiler.fastapi_project_validation_adapter import (
     FastApiValidationRuntime,
     build_fastapi_project_validation_adapter_registration,
@@ -17,6 +21,7 @@ from scaffold_compiler.project_assembly_adapter_registry import (
 )
 from scaffold_compiler.project_command_application import ProjectCommandApplication
 from scaffold_compiler.project_recipe_registry import (
+    CMAKE_RECIPE_ID,
     FASTAPI_RECIPE_ID,
     ProjectRecipe,
     build_builtin_project_recipe_registry,
@@ -40,6 +45,8 @@ def build_builtin_project_command_application(
     home_directory: Path,
     uv_executable: Path | None,
     docker_executable: Path | None,
+    cmake_executable: Path | None,
+    ctest_executable: Path | None,
     environment: Mapping[str, str],
 ) -> ProjectCommandApplication:
     """Compose the generic application with every trusted built-in adapter."""
@@ -54,9 +61,18 @@ def build_builtin_project_command_application(
         recipe: ProjectRecipe,
         run_id: str,
     ) -> object:
+        answers = configuration.answers
+        if recipe.recipe_id == CMAKE_RECIPE_ID:
+            target_name = answers.get("target_name")
+            if not isinstance(target_name, str):
+                raise ValueError("CMake runtime answers are invalid.")
+            return CMakeValidationRuntime(
+                target_name=target_name,
+                cmake_executable=cmake_executable,
+                ctest_executable=ctest_executable,
+            )
         if recipe.recipe_id != FASTAPI_RECIPE_ID or uv_executable is None:
             raise ValueError("Required recipe validation runtime is unavailable.")
-        answers = configuration.answers
         package_name = answers.get("package_name")
         database = answers.get("database")
         if not isinstance(package_name, str) or database not in {"none", "postgres"}:
@@ -85,7 +101,10 @@ def build_builtin_project_command_application(
             (*fastapi_assembly_registry.adapters, *cmake_assembly_registry.adapters)
         ),
         validation_registry=build_project_validation_adapter_registry(
-            (build_fastapi_project_validation_adapter_registration(),)
+            (
+                build_fastapi_project_validation_adapter_registration(),
+                build_cmake_project_validation_adapter_registration(),
+            )
         ),
         validation_runtime_factory=validation_runtime_factory,
     )
