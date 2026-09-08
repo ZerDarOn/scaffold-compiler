@@ -214,6 +214,14 @@ class CMakeValidationExecutorTests(unittest.TestCase):
                 ctest.write_bytes(b"")
                 candidate = make_candidate(root)
 
+                def return_failure(
+                    specification: ControlledProcessSpec,
+                    *,
+                    result: ControlledProcessResult = failure_result,
+                ) -> ControlledProcessResult:
+                    del specification
+                    return result
+
                 report = execute_cmake_validation(
                     candidate,
                     "0" * 64,
@@ -223,7 +231,7 @@ class CMakeValidationExecutorTests(unittest.TestCase):
                     cmake_executable=cmake,
                     ctest_executable=ctest,
                     validation_environment=root / "validation-env",
-                    process_runner=lambda specification, result=failure_result: result,
+                    process_runner=return_failure,
                 )
 
                 self.assertEqual(report.checks[0].status, ValidationStatus.FAIL)
