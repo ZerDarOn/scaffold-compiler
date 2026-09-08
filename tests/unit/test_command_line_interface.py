@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import unittest
 from pathlib import Path
+from typing import TextIO
 
 from scaffold_compiler.command_line_interface import CommandOutcome, run_command_line
 
@@ -14,6 +15,14 @@ class RecordingCommandService:
 
     def preview(self, config_path: Path) -> CommandOutcome:
         return self._record("preview", config_path)
+
+    def initialize_configuration(
+        self,
+        config_path: Path,
+        input_stream: TextIO,
+        output_stream: TextIO,
+    ) -> CommandOutcome:
+        return self._record("init", config_path, input_stream, output_stream)
 
     def inspect(self, workspace: Path) -> CommandOutcome:
         return self._record("inspect", workspace)
@@ -37,6 +46,8 @@ class CommandLineInterfaceTests(unittest.TestCase):
         self,
         arguments: list[str],
         service: RecordingCommandService | None = None,
+        *,
+        stdin_text: str = "",
     ) -> tuple[int, str, str, RecordingCommandService]:
         selected_service = service or RecordingCommandService()
         stdout = io.StringIO()
@@ -44,10 +55,26 @@ class CommandLineInterfaceTests(unittest.TestCase):
         exit_code = run_command_line(
             arguments,
             service=selected_service,
+            stdin=io.StringIO(stdin_text),
             stdout=stdout,
             stderr=stderr,
         )
         return exit_code, stdout.getvalue(), stderr.getvalue(), selected_service
+
+    def test_init_routes_the_output_path_and_interactive_streams(self) -> None:
+        exit_code, stdout, stderr, service = self.execute(
+            ["init", "--output", "project.json"],
+            stdin_text="1\nDemo\ndelivery\n\n\n\n",
+        )
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout, "completed\n")
+        self.assertEqual(stderr, "")
+        name, arguments = service.calls[0]
+        self.assertEqual(name, "init")
+        self.assertEqual(arguments[0], Path("project.json"))
+        self.assertIsInstance(arguments[1], io.StringIO)
+        self.assertIsInstance(arguments[2], io.StringIO)
 
     def test_preview_and_inspect_route_only_their_validated_paths(self) -> None:
         cases = (

@@ -7,6 +7,7 @@ import logging
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import TextIO
 
 from scaffold_compiler.blueprint_catalog import load_blueprint_catalog
 from scaffold_compiler.blueprint_plan_compiler import (
@@ -20,6 +21,10 @@ from scaffold_compiler.failed_workspace_recovery import (
     inspect_failed_workspace,
 )
 from scaffold_compiler.generation_workflow import CompletedGeneration
+from scaffold_compiler.interactive_configuration import (
+    ConfigurationInitializationError,
+    write_interactive_configuration,
+)
 from scaffold_compiler.project_assembly_adapter_registry import ProjectAssemblyAdapterRegistry
 from scaffold_compiler.project_generation_workflow import execute_project_generation
 from scaffold_compiler.project_recipe_registry import ProjectRecipe, ProjectRecipeRegistry
@@ -63,6 +68,35 @@ class ProjectCommandApplication:
         self._validation_runtime_factory = validation_runtime_factory
         self._generation_runner = generation_runner
         self._run_id_factory = run_id_factory or (lambda: uuid.uuid4().hex)
+
+    def initialize_configuration(
+        self,
+        config_path: Path,
+        input_stream: TextIO,
+        output_stream: TextIO,
+    ) -> CommandOutcome:
+        """Interactively create a validated config without starting generation."""
+        try:
+            created = write_interactive_configuration(
+                config_path,
+                input_stream=input_stream,
+                output_stream=output_stream,
+                recipe_registry=self._recipe_registry,
+                answer_normalizers=self._answer_normalizers,
+                working_directory=self._working_directory,
+                home_directory=self._home_directory,
+            )
+        except ConfigurationInitializationError:
+            LOGGER.error("project_configuration_initialization_failed")
+            return CommandOutcome(1, "Configuration was not created.")
+        display_path = created.as_posix()
+        return CommandOutcome(
+            0,
+            "Configuration created successfully.\n"
+            f'Next: scaffold-compiler preview --config "{display_path}"\n'
+            "Then, after review: scaffold-compiler run "
+            f'--config "{display_path}" --non-interactive --confirm-finalize FINALIZE',
+        )
 
     def preview(self, config_path: Path) -> CommandOutcome:
         """Return a deterministic recipe plan without creating a workspace."""

@@ -5,7 +5,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import Any, cast
 from unittest.mock import Mock, patch
 
 from scaffold_compiler.capsule_package import build_capsule_package
@@ -33,6 +33,41 @@ class SuccessfulRunApplication:
 
 
 class ReleaseEntryTests(unittest.TestCase):
+    def test_default_application_initializes_a_valid_cmake_configuration_only(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "project.json"
+            target = root / "delivery"
+            stdout = io.StringIO()
+
+            class PromptAwareInput(io.StringIO):
+                def readline(self, size: int | None = -1, /) -> Any:
+                    if self.tell() == 0:
+                        self_test.assertIn("Recipe number or id", stdout.getvalue())
+                    return super().readline(-1 if size is None else size)
+
+            self_test = self
+
+            exit_code = main(
+                ["init", "--output", str(config_path)],
+                entry_path=root / "source-entry.py",
+                stdin=PromptAwareInput(f"2\nExample CLI\n{target}\nexample_cli\ny\n"),
+                stdout=stdout,
+                stderr=io.StringIO(),
+                environment={},
+            )
+
+            self.assertEqual(exit_code, 0)
+            self.assertFalse(target.exists())
+            payload = json.loads(config_path.read_text(encoding="utf-8"))
+            self.assertEqual(payload["recipe"], "c-cmake-cli")
+            self.assertEqual(
+                payload["answers"],
+                {"strict_warnings": True, "target_name": "example_cli"},
+            )
+            self.assertIn("preview --config", stdout.getvalue())
+            self.assertIn("--confirm-finalize FINALIZE", stdout.getvalue())
+
     def test_default_application_previews_legacy_and_v2_fastapi_through_generic_cli(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

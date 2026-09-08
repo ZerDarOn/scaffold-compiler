@@ -16,7 +16,26 @@ FastAPI can optionally add PostgreSQL persistence and Docker delivery. The C rec
 enable compiler-specific strict warnings. Recipe choice is made once per run; capabilities from one
 recipe cannot be mixed into another.
 
-## Write a configuration
+## Create a configuration interactively
+
+Keep `capsule_manifest.json`, `scaffold_compiler.pyz`, and `blueprints` together, then run:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz init `
+  --output .\project.json
+```
+
+`init` asks which trusted built-in recipe to use, then asks only the common and recipe-specific
+questions needed for that choice. It validates the completed answers with the production schema-2
+parser and writes canonical JSON. The command does not create the target project or hidden
+workspace, does not check external build tools, and does not arm capsule self-cleanup. The output
+file's parent must already exist, and an existing file is never overwritten. Interrupted or invalid
+input leaves no partial configuration.
+
+The completion message prints the exact next `preview` command and the explicitly confirmed `run`
+command. Review the generated JSON before using either one.
+
+## Write a configuration manually
 
 Use schema 2 for all new projects. The target directory must not exist, while its parent must exist.
 Relative paths are resolved from the command's working directory. Specify answers explicitly when
@@ -75,8 +94,8 @@ recipe. Do not mix legacy fields (`package_name`, `database`, `container`) with 
 
 ## Preview before creating anything
 
-Keep `capsule_manifest.json`, `scaffold_compiler.pyz`, and `blueprints` together. Preview validates
-the configuration and prints deterministic JSON without creating a target or hidden workspace:
+Preview validates the configuration and prints deterministic JSON without creating a target or
+hidden workspace:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz preview `

@@ -21,7 +21,7 @@ class DocumentationContractTests(unittest.TestCase):
     def test_user_guide_covers_both_recipes_and_the_complete_public_lifecycle(self) -> None:
         for recipe_id in ("python-fastapi-service", "c-cmake-cli"):
             self.assertIn(recipe_id, self.user_guide)
-        for command in ("preview", "run", "inspect", "discard", "cleanup"):
+        for command in ("init", "preview", "run", "inspect", "discard", "cleanup"):
             self.assertIn(f" {command} `", self.user_guide)
         for confirmation in (
             "--confirm-finalize FINALIZE",
@@ -31,6 +31,8 @@ class DocumentationContractTests(unittest.TestCase):
             self.assertIn(confirmation, self.user_guide)
         normalized_user_guide = " ".join(self.user_guide.split())
         self.assertIn("does not delete the published target", normalized_user_guide)
+        self.assertIn("existing file is never overwritten", normalized_user_guide)
+        self.assertIn("does not arm capsule self-cleanup", normalized_user_guide)
         self.assertIn("docs/user_guide.md", self.readme)
 
     def test_author_guide_preserves_the_trusted_data_only_extension_boundary(self) -> None:

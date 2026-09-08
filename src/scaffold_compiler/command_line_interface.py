@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Never, Protocol, TextIO
@@ -32,6 +33,13 @@ class CommandOutcome:
 class ScaffoldCommandService(Protocol):
     """Application boundary consumed by the command-line adapter."""
 
+    def initialize_configuration(
+        self,
+        config_path: Path,
+        input_stream: TextIO,
+        output_stream: TextIO,
+    ) -> CommandOutcome: ...
+
     def preview(self, config_path: Path) -> CommandOutcome: ...
 
     def inspect(self, workspace: Path) -> CommandOutcome: ...
@@ -56,6 +64,7 @@ def run_command_line(
     arguments: list[str],
     *,
     service: ScaffoldCommandService,
+    stdin: TextIO | None = None,
     stdout: TextIO,
     stderr: TextIO,
 ) -> int:
@@ -75,7 +84,7 @@ def run_command_line(
 
     command = str(parsed.command)
     LOGGER.info("cli_command_started command=%s", command)
-    outcome = _dispatch(parsed, service)
+    outcome = _dispatch(parsed, service, sys.stdin if stdin is None else stdin, stdout)
     destination = stdout if outcome.exit_code == _EXIT_SUCCESS else stderr
     destination.write(f"{outcome.message}\n")
     LOGGER.info(
@@ -89,6 +98,9 @@ def run_command_line(
 def _build_parser() -> argparse.ArgumentParser:
     parser = _SafeArgumentParser(prog="scaffold-compiler")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    initialize = commands.add_parser("init")
+    initialize.add_argument("--output", required=True, type=Path)
 
     preview = commands.add_parser("preview")
     preview.add_argument("--config", required=True, type=Path)
@@ -118,8 +130,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def _dispatch(
     parsed: argparse.Namespace,
     service: ScaffoldCommandService,
+    input_stream: TextIO,
+    output_stream: TextIO,
 ) -> CommandOutcome:
     command = parsed.command
+    if command == "init":
+        return service.initialize_configuration(parsed.output, input_stream, output_stream)
     if command == "preview":
         return service.preview(parsed.config)
     if command == "inspect":

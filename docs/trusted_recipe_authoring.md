@@ -89,7 +89,7 @@ silently sharing language-specific assumptions.
 
 ## Trusted adapters
 
-Adding a recipe requires three deliberate code registrations:
+Adding a recipe requires three deliberate runtime registrations:
 
 - An answer normalizer validates the recipe's complete answer object, rejects unknown fields, applies
   deterministic defaults, and returns JSON-only canonical values.
@@ -103,11 +103,20 @@ Register the keys in the built-in composition root. Do not add dynamic imports, 
 manifest-provided commands, arbitrary environment forwarding, or network installation hooks. Tool
 installation is a user prerequisite; validation does not bootstrap a machine.
 
+To expose the recipe through `init`, also register a fourth trusted-code component: a questionnaire
+that collects JSON-only candidate answers. Questionnaire definitions must not come from blueprint
+manifests and cannot execute hooks or tools. They are a convenience layer only; the registered
+answer normalizer remains authoritative and must validate the complete result before any
+configuration file is published. `init` must retain atomic no-overwrite behavior and must not start
+generation or capsule cleanup.
+
 ## Required test evidence
 
 Before a recipe can ship, add:
 
 - configuration tests for defaults, invalid types, unknown answers, and portable identifiers;
+- questionnaire tests for defaults, invalid-choice retry, interrupted input, strict parser reuse,
+  and no-overwrite configuration publication;
 - registry tests for trusted keys and recipe scope;
 - planner tests for cross-recipe dependencies, conflicts, cycles, duplicate providers, and duplicate
   output ownership;

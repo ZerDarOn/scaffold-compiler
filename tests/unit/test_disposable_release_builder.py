@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 import sys
 import unittest
@@ -64,6 +65,42 @@ class DisposableReleaseBuilderTests(unittest.TestCase):
 
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn("scaffold-compiler", completed.stdout)
+            self.assertTrue(capsule.exists())
+
+    def test_fresh_release_entry_can_initialize_configuration_without_self_cleanup(self) -> None:
+        repository = Path(__file__).parents[2]
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            capsule = build_disposable_release(
+                repository,
+                root / "capsule",
+                capsule_id=CAPSULE_ID,
+                compiler_version="1.0.0",
+            )
+            target = root / "delivery"
+            config = root / "project.json"
+
+            completed = subprocess.run(
+                (
+                    sys.executable,
+                    str(capsule / "scaffold_compiler.pyz"),
+                    "init",
+                    "--output",
+                    str(config),
+                ),
+                cwd=root,
+                input=f"2\nExample CLI\n{target}\nexample_cli\ny\n",
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=10,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                json.loads(config.read_text(encoding="utf-8"))["recipe"], "c-cmake-cli"
+            )
+            self.assertFalse(target.exists())
             self.assertTrue(capsule.exists())
 
 

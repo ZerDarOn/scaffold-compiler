@@ -34,6 +34,7 @@ def main(
     *,
     entry_path: Path | None = None,
     application: ScaffoldCommandService | None = None,
+    stdin: TextIO | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
     environment: Mapping[str, str] | None = None,
@@ -42,6 +43,7 @@ def main(
     selected_arguments = list(sys.argv[1:] if arguments is None else arguments)
     selected_stdout = sys.stdout if stdout is None else stdout
     selected_stderr = sys.stderr if stderr is None else stderr
+    selected_stdin = sys.stdin if stdin is None else stdin
     selected_environment = dict(os.environ if environment is None else environment)
     actual_entry = Path(sys.argv[0] if entry_path is None else entry_path).absolute()
     try:
@@ -56,6 +58,7 @@ def main(
         return run_command_line(
             selected_arguments,
             service=cast(ScaffoldCommandService, object()),
+            stdin=selected_stdin,
             stdout=selected_stdout,
             stderr=selected_stderr,
         )
@@ -91,10 +94,12 @@ def main(
             return 1
 
     buffered_stdout = io.StringIO()
+    command_stdout = selected_stdout if selected_arguments[:1] == ["init"] else buffered_stdout
     exit_code = run_command_line(
         selected_arguments,
         service=selected_application,
-        stdout=buffered_stdout,
+        stdin=selected_stdin,
+        stdout=command_stdout,
         stderr=selected_stderr,
     )
     if exit_code != 0:
@@ -108,7 +113,8 @@ def main(
                 "Project completed, but generator self-cleanup could not be armed.\n"
             )
             return 1
-    selected_stdout.write(buffered_stdout.getvalue())
+    if command_stdout is buffered_stdout:
+        selected_stdout.write(buffered_stdout.getvalue())
     return 0
 
 

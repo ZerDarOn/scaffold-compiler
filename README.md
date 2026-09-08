@@ -36,7 +36,18 @@ language or project family should follow
 ## Run a release capsule
 
 Keep the distributed `capsule_manifest.json`, `scaffold_compiler.pyz`, and `blueprints` directory
-together in their original capsule directory. Create `project.json` outside that directory:
+together in their original capsule directory. The recommended first step is the interactive
+configuration wizard:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz init `
+  --output .\project.json
+```
+
+The wizard lists only trusted built-in recipes, validates every answer with the same strict parser
+used by `preview` and `run`, and atomically creates a schema-2 JSON file. It never overwrites an
+existing file, creates a project, or starts capsule self-cleanup. You can also create
+`project.json` manually outside the capsule directory:
 
 ```json
 {
@@ -125,8 +136,9 @@ a native no-replace directory move.
 - A failed run preserves the capsule so the evidence can be inspected, explicitly discarded, or the
   generation retried as a new run.
 
-The public lifecycle is deliberately limited to `preview`, `inspect`, `discard`, `cleanup`, and the
-fully confirmed `run` path. It does not claim to manage or upgrade a project after Finalize.
+The public lifecycle is deliberately limited to configuration-only `init`, `preview`, `inspect`,
+`discard`, `cleanup`, and the fully confirmed `run` path. It does not claim to manage or upgrade a
+project after Finalize.
 
 ## Development baseline
 
