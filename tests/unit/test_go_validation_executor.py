@@ -93,7 +93,8 @@ class GoValidationExecutorTests(unittest.TestCase):
             self.assertEqual(specifications[0].argv[1], "-l")
             self.assertEqual(specifications[1].argv[1:], ("test", "./..."))
             self.assertEqual(specifications[2].argv[1], "build")
-            self.assertIn(str(root / "validation-env" / "build"), specifications[2].argv[3])
+            build_root = (root / "validation-env" / "build").resolve()
+            self.assertEqual(Path(specifications[2].argv[3]).parent, build_root)
             for specification in specifications:
                 environment = dict(specification.environment)
                 self.assertEqual(environment["GOTOOLCHAIN"], "local")
