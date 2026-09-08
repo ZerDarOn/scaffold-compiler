@@ -340,6 +340,8 @@ C 配方使用同一公共封装，但答案属于自身：
 
 #### Task 4.1｜生命周期去语言化失败测试
 
+**状态：完成。**
+
 - Input：通用配置、装配与验证适配器、现有状态机。
 - Output：证明会话编排不读取 package、database、container 的契约测试，以及配置/配方/计划/候选摘要绑定测试。
 - Risk：表面存在配方，核心命令应用仍然硬编码 FastAPI 分支。
@@ -347,6 +349,8 @@ C 配方使用同一公共封装，但答案属于自身：
 - Flag：状态机与原子性；TDD 失败测试。
 
 #### Task 4.2｜通用命令应用最小实现
+
+**状态：进行中。**
 
 - Input：Task 4.1 与现有生成工作流、Finalize 事务器。
 - Output：配方驱动的 preview、run、inspect、discard 编排；复用同一目标锁、journal、Finalize 和清理实现。
@@ -447,10 +451,10 @@ C 配方使用同一公共封装，但答案属于自身：
 
 ## 11. 状态快照
 
-- Done：Phase 1–3 全部任务；FastAPI 的规划、装配与验证均已委托配方驱动的受信边界，旧 V1 入口保持兼容。
-- Tests：本地全量回归为 230 passed、3 skipped、197 subtests passed；新增聚焦回归覆盖验证适配器重复/未知注册、门提供者冲突、报告绑定、必需门、候选篡改、秘密日志和 FastAPI 运行时委托。
-- Next：Task 4.1，先用契约测试证明通用生命周期编排不读取 package、database、container 等 FastAPI 专有字段。
+- Done：Phase 1–3 与 Task 4.1；现有事务核心已抽取为语言无关回调边界，类 C 配方契约证明编排不读取 package、database、container，旧 V1 包装和四组合保持兼容。
+- Tests：本地全量回归为 233 passed、3 skipped、198 subtests passed；Phase 4 新增非 Python 配方全事务、摘要绑定、身份错配无副作用和 run ID 路径逃逸拒绝覆盖。
+- Next：Task 4.2，基于通用事务入口完成配方驱动的 preview、run、inspect、discard 应用服务，并保持恢复与删除范围由核心控制。
 - Debt：CMake 与 C 编译器的最低受支持版本将在 Phase 5 前通过 Windows/Linux CI 环境决策冻结。
-- Rollback point：V1 CLI 仍使用旧配置入口；规划、装配与验证已分别委托新边界，可独立回退 Phase 3 而保留 Phase 2。
+- Rollback point：CLI 仍指向 V1 应用；可删除通用生命周期入口并让 V1 包装恢复内联事务，不影响 Phase 1–3 的配方边界。
 
-Phase 3 trusted adapter checkpoint complete. Proceed with generic lifecycle wiring?
+Phase 4 lifecycle contract checkpoint complete. Proceed with the generic command application?

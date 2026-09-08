@@ -1,4 +1,4 @@
-"""Journal-first non-interactive generation workflow for the fixed V1 matrix."""
+"""Journal-first project generation transaction with a legacy V1 wrapper."""
 
 from __future__ import annotations
 
@@ -6,12 +6,14 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from scaffold_compiler.blueprint_catalog import BlueprintCatalog
+from scaffold_compiler.blueprint_plan_compiler import GenerationPlan
 from scaffold_compiler.candidate_ownership_store import CandidateOwnershipStore
 from scaffold_compiler.candidate_project_assembler import (
     CandidateAssemblyResult,
@@ -46,6 +48,7 @@ from scaffold_compiler.validation_workspace import (
 )
 
 LOGGER = logging.getLogger(__name__)
+_RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 
 
 class GenerationWorkflowError(RuntimeError):
@@ -66,6 +69,8 @@ CandidateValidator = Callable[
     [CandidateAssemblyResult, str, str, tuple[str, ...], Path],
     ValidationReport,
 ]
+PlanCompiler = Callable[[], tuple[BlueprintCatalog, GenerationPlan]]
+CandidateMaterializer = Callable[[Path, BlueprintCatalog, GenerationPlan], CandidateAssemblyResult]
 
 
 def execute_non_interactive_generation(
@@ -76,8 +81,65 @@ def execute_non_interactive_generation(
     catalog_root: Path | None = None,
     mover: Callable[[Path, Path], None] | None = None,
 ) -> CompletedGeneration:
-    """Generate, verify, publish, and clean one fixed V1 project transaction."""
-    target = configuration.target_directory
+    """Preserve the fixed V1 call contract over the language-neutral transaction."""
+
+    def plan_compiler() -> tuple[BlueprintCatalog, GenerationPlan]:
+        return compile_v1_plan(configuration, catalog_root=catalog_root)
+
+    def candidate_materializer(
+        workspace: Path,
+        catalog: BlueprintCatalog,
+        plan: GenerationPlan,
+    ) -> CandidateAssemblyResult:
+        return materialize_v1_candidate(
+            configuration,
+            workspace,
+            catalog=catalog,
+            plan=plan,
+            catalog_root=catalog_root,
+        )
+
+    return execute_generation_transaction(
+        target=configuration.target_directory,
+        configuration_digest=configuration.configuration_digest,
+        run_id=run_id,
+        plan_compiler=plan_compiler,
+        candidate_materializer=candidate_materializer,
+        validator=validator,
+        mover=mover,
+    )
+
+
+def execute_generation_transaction(
+    *,
+    target: Path,
+    configuration_digest: str,
+    run_id: str,
+    plan_compiler: PlanCompiler,
+    candidate_materializer: CandidateMaterializer,
+    validator: CandidateValidator,
+    mover: Callable[[Path, Path], None] | None = None,
+    recipe_id: str | None = None,
+    recipe_version: str | None = None,
+) -> CompletedGeneration:
+    """Generate, verify, publish, and clean without reading recipe-specific answers."""
+    if not target.is_absolute() or not target.parent.is_dir():
+        raise GenerationWorkflowError("Generation target must have an existing absolute parent.")
+    if not _RUN_ID_PATTERN.fullmatch(run_id):
+        raise GenerationWorkflowError("Generation run ID is invalid.")
+    if (recipe_id is None) != (recipe_version is None):
+        raise GenerationWorkflowError("Recipe identity must be complete when provided.")
+    initial_session = GenerationSession.new(
+        run_id=run_id,
+        configuration_digest=configuration_digest,
+    )
+    LOGGER.info(
+        "generation_workflow_started run_id=%s recipe_id=%s recipe_version=%s target_name=%s",
+        run_id,
+        recipe_id or "legacy-v1",
+        recipe_version or "legacy-v1",
+        target.name,
+    )
     workspace = target.parent / f".{target.name}.scaffold-{run_id}"
     lock_store = TargetLockStore(target)
     lock = lock_store.acquire(
@@ -90,14 +152,11 @@ def execute_non_interactive_generation(
         store = SessionStateStore(workspace / "session.json")
         candidate_store = CandidateOwnershipStore(workspace / "candidate_ownership.json")
         report_store = ValidationReportStore(workspace / "validation_report.json")
-        session = GenerationSession.new(
-            run_id=run_id,
-            configuration_digest=configuration.configuration_digest,
-        )
+        session = initial_session
         store.save(session)
 
         try:
-            catalog, plan = compile_v1_plan(configuration, catalog_root=catalog_root)
+            catalog, plan = plan_compiler()
             blueprint_digest = _selected_blueprint_digest(catalog, plan.blueprint_ids)
         except Exception:
             session = transition_session(session, SessionEvent.PLAN_FAILED)
@@ -109,13 +168,7 @@ def execute_non_interactive_generation(
         session = transition_session(session, SessionEvent.MATERIALIZE_REQUESTED)
         store.save(session)
         try:
-            candidate = materialize_v1_candidate(
-                configuration,
-                workspace,
-                catalog=catalog,
-                plan=plan,
-                catalog_root=catalog_root,
-            )
+            candidate = candidate_materializer(workspace, catalog, plan)
             if _selected_blueprint_digest(catalog, plan.blueprint_ids) != blueprint_digest:
                 raise GenerationWorkflowError(
                     "Selected blueprint bytes changed during materialization."
@@ -139,13 +192,13 @@ def execute_non_interactive_generation(
             validation_workspace = prepare_validation_workspace(workspace, run_id=run_id)
             report = validator(
                 candidate,
-                configuration.configuration_digest,
+                configuration_digest,
                 blueprint_digest,
                 required_validations,
                 validation_workspace.root,
             )
             if (
-                report.configuration_digest != configuration.configuration_digest
+                report.configuration_digest != configuration_digest
                 or report.blueprint_digest != blueprint_digest
                 or report.plan_digest != plan.digest
                 or report.candidate_digest != candidate.digest
@@ -223,8 +276,11 @@ def execute_non_interactive_generation(
         (workspace / "session.json").unlink()
         workspace.rmdir()
         LOGGER.info(
-            "generation_workflow_completed run_id=%s target_name=%s files=%d",
+            "generation_workflow_completed run_id=%s recipe_id=%s recipe_version=%s "
+            "target_name=%s files=%d",
             run_id,
+            recipe_id or "legacy-v1",
+            recipe_version or "legacy-v1",
             target.name,
             len(candidate.files),
         )
