@@ -21,7 +21,8 @@ The second reference recipe generates a C11/CMake CLI project and is runtime-ver
 Ninja, CTest, and a platform C compiler on both Linux and Windows CI.
 
 The third reference recipe generates a standard-library Go CLI and validates formatting, tests,
-build output, and executable behavior without downloading project dependencies.
+build output, and executable behavior without downloading project dependencies. Go caches,
+temporary build files, and binaries stay inside the run-owned validation environment.
 
 The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
@@ -69,8 +70,9 @@ existing file, creates a project, or starts capsule self-cleanup. You can also c
 
 The target must not already exist, and its parent must exist. On Windows, the derived hidden
 workspace path is limited to 120 UTF-16 code units so legacy build tools and safe cleanup retain
-enough path budget; choose a shorter target parent or project directory name when this preflight
-rejects a path. On Windows PowerShell:
+enough path budget. Its leaf is a fixed-length opaque `.scw-<workspace-id>`, so the project
+directory name does not consume that internal budget; choose a shorter target parent when this
+preflight rejects a path. On Windows PowerShell:
 
 ```powershell
 $env:SCAFFOLD_COMPILER_UV = (Get-Command uv).Source
@@ -104,14 +106,14 @@ digest, and failed gates without needing `uv` or database credentials:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz inspect `
-  --workspace .\.example-api.scaffold-<run-id>
+  --workspace .\.scw-<workspace-id>
 ```
 
 After diagnosis, explicitly discard only that failed workspace:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz discard `
-  --workspace .\.example-api.scaffold-<run-id> `
+  --workspace .\.scw-<workspace-id> `
   --confirm DISCARD
 ```
 
@@ -124,7 +126,7 @@ workspace. Retry only that cleanup with a separate confirmation word:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz cleanup `
-  --workspace .\.example-api.scaffold-<run-id> `
+  --workspace .\.scw-<workspace-id> `
   --confirm CLEANUP
 ```
 
@@ -184,7 +186,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.1.0 `
+  --destination .\dist\scaffold-compiler-2.2.0-dev `
   --archive
 ```
 

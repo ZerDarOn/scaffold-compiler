@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import stat
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +14,7 @@ from scaffold_compiler.candidate_ownership_store import (
 )
 from scaffold_compiler.candidate_project_assembler import CandidateAssemblyResult
 from scaffold_compiler.finalization import cleanup_owned_candidate
+from scaffold_compiler.generation_workspace_identity import resolve_bound_generation_target
 from scaffold_compiler.session_state_store import (
     FailureStage,
     GenerationSession,
@@ -36,7 +36,6 @@ from scaffold_compiler.validation_workspace import (
 
 LOGGER = logging.getLogger(__name__)
 
-_WORKSPACE_PREFIX_PATTERN: Final = re.compile(r"^\..+\.scaffold-")
 _ALLOWED_ROOT_ENTRIES: Final = frozenset(
     {
         "candidate",
@@ -165,11 +164,12 @@ def _load_workspace_session(workspace: Path) -> tuple[Path, GenerationSession]:
     if _is_link_or_reparse(session_path):
         raise ValueError("Session evidence cannot be linked or reparsed.")
     session = SessionStateStore(session_path).load()
-    expected_suffix = f".scaffold-{session.run_id}"
-    if not _WORKSPACE_PREFIX_PATTERN.match(
-        trusted_workspace.name
-    ) or not trusted_workspace.name.endswith(expected_suffix):
-        raise ValueError("Workspace name does not bind the session run ID.")
+    resolve_bound_generation_target(
+        trusted_workspace,
+        run_id=session.run_id,
+        configuration_digest=session.configuration_digest,
+        target_name=session.target_name,
+    )
     return trusted_workspace, session
 
 

@@ -12,9 +12,12 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Final
 
+from scaffold_compiler.generation_workspace_identity import validate_generation_target_name
+
 LOGGER = logging.getLogger(__name__)
 
-SESSION_SCHEMA_VERSION: Final = 1
+SESSION_SCHEMA_VERSION: Final = 2
+_LEGACY_SESSION_SCHEMA_VERSION: Final = 1
 _DIGEST_PATTERN: Final = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -90,6 +93,7 @@ class GenerationSession:
     run_id: str
     state: SessionState
     configuration_digest: str
+    target_name: str | None = None
     plan_digest: str | None = None
     candidate_digest: str | None = None
     verification_digest: str | None = None
@@ -99,6 +103,8 @@ class GenerationSession:
     def __post_init__(self) -> None:
         if not self.run_id or len(self.run_id) > 128:
             raise ValueError("Run ID must contain between 1 and 128 characters.")
+        if self.target_name is not None:
+            validate_generation_target_name(self.target_name)
         _validate_digest(self.configuration_digest, field="configuration_digest")
         for field, digest in (
             ("plan_digest", self.plan_digest),
@@ -113,12 +119,19 @@ class GenerationSession:
             raise ValueError("Failure stage must exist only for failed retryable sessions.")
 
     @classmethod
-    def new(cls, *, run_id: str, configuration_digest: str) -> GenerationSession:
+    def new(
+        cls,
+        *,
+        run_id: str,
+        configuration_digest: str,
+        target_name: str | None = None,
+    ) -> GenerationSession:
         """Create the initial immutable session record."""
         return cls(
             run_id=run_id,
             state=SessionState.NEW,
             configuration_digest=configuration_digest,
+            target_name=target_name,
         )
 
 
@@ -332,6 +345,7 @@ def _apply_transition(
             run_id=session.run_id,
             state=SessionState.NEW,
             configuration_digest=configuration_digest,
+            target_name=session.target_name,
             revision=session.revision + 1,
         )
 
@@ -526,7 +540,7 @@ def _serialize_session(session: GenerationSession) -> str:
 
 
 def _deserialize_session(raw_record: dict[str, object]) -> GenerationSession:
-    expected_fields = {
+    legacy_fields = {
         "candidate_digest",
         "configuration_digest",
         "failed_stage",
@@ -537,10 +551,18 @@ def _deserialize_session(raw_record: dict[str, object]) -> GenerationSession:
         "state",
         "verification_digest",
     }
+    current_fields = legacy_fields | {"target_name"}
+    schema_version = raw_record.get("schema_version")
+    if schema_version == _LEGACY_SESSION_SCHEMA_VERSION:
+        expected_fields = legacy_fields
+        target_name = None
+    elif schema_version == SESSION_SCHEMA_VERSION:
+        expected_fields = current_fields
+        target_name = _optional_string(raw_record, "target_name")
+    else:
+        raise ValueError("Session record schema is unsupported.")
     if set(raw_record) != expected_fields:
         raise ValueError("Session record fields do not match the schema.")
-    if raw_record["schema_version"] != SESSION_SCHEMA_VERSION:
-        raise ValueError("Session record schema is unsupported.")
 
     run_id = raw_record["run_id"]
     configuration_digest = raw_record["configuration_digest"]
@@ -554,6 +576,7 @@ def _deserialize_session(raw_record: dict[str, object]) -> GenerationSession:
         run_id=run_id,
         state=SessionState(_required_string(raw_record, "state")),
         configuration_digest=configuration_digest,
+        target_name=target_name,
         plan_digest=_optional_string(raw_record, "plan_digest"),
         candidate_digest=_optional_string(raw_record, "candidate_digest"),
         verification_digest=_optional_string(raw_record, "verification_digest"),

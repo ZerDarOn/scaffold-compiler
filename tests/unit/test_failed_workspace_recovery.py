@@ -15,6 +15,7 @@ from scaffold_compiler.failed_workspace_recovery import (
     discard_failed_workspace,
     inspect_failed_workspace,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.session_state_store import (
     FailureStage,
     GenerationSession,
@@ -33,8 +34,21 @@ from scaffold_compiler.validation_report_store import ValidationReportStore
 from scaffold_compiler.validation_workspace import prepare_validation_workspace
 
 
-def prepare_failed_workspace(root: Path) -> tuple[Path, CandidateAssemblyResult]:
-    workspace = root / ".delivery.scaffold-run-1"
+def prepare_failed_workspace(
+    root: Path,
+    *,
+    current_workspace: bool = False,
+) -> tuple[Path, CandidateAssemblyResult]:
+    configuration_digest = "a" * 64
+    workspace = (
+        derive_generation_workspace(
+            root / "delivery",
+            run_id="run-1",
+            configuration_digest=configuration_digest,
+        )
+        if current_workspace
+        else root / ".delivery.scaffold-run-1"
+    )
     workspace.mkdir()
     candidate_root = workspace / "candidate"
     candidate_root.mkdir()
@@ -58,7 +72,8 @@ def prepare_failed_workspace(root: Path) -> tuple[Path, CandidateAssemblyResult]
     session = GenerationSession(
         run_id="run-1",
         state=SessionState.FAILED_RETRYABLE,
-        configuration_digest="a" * 64,
+        configuration_digest=configuration_digest,
+        target_name="delivery" if current_workspace else None,
         plan_digest=candidate.plan_digest,
         candidate_digest=candidate.digest,
         failed_stage=FailureStage.VERIFY,
@@ -87,6 +102,35 @@ def prepare_failed_workspace(root: Path) -> tuple[Path, CandidateAssemblyResult]
 
 
 class FailedWorkspaceRecoveryTests(unittest.TestCase):
+    def test_current_short_workspace_can_be_inspected_and_discarded(self) -> None:
+        with TemporaryDirectory() as directory:
+            workspace, _candidate = prepare_failed_workspace(
+                Path(directory).resolve(),
+                current_workspace=True,
+            )
+
+            inspection = inspect_failed_workspace(workspace)
+            result = discard_failed_workspace(workspace)
+
+            self.assertTrue(inspection.evidence_valid)
+            self.assertTrue(result.completed)
+            self.assertFalse(workspace.exists())
+
+    def test_renamed_short_workspace_is_refused_without_deleting_evidence(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            workspace, _candidate = prepare_failed_workspace(root, current_workspace=True)
+            renamed = root / (".scw-" + "0" * 32)
+            workspace.rename(renamed)
+
+            with self.assertRaises(ValueError):
+                inspect_failed_workspace(renamed)
+            result = discard_failed_workspace(renamed)
+
+            self.assertFalse(result.completed)
+            self.assertTrue((renamed / "candidate" / "README.md").exists())
+            self.assertTrue(renamed.exists())
+
     def test_inspect_reports_bound_state_candidate_and_failed_gates_read_only(self) -> None:
         with TemporaryDirectory() as directory:
             workspace, candidate = prepare_failed_workspace(Path(directory))

@@ -25,6 +25,7 @@ from scaffold_compiler.generation_workflow import (
     GenerationPreflightError,
     execute_non_interactive_generation,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.project_configuration import (
     DatabaseChoice,
     ProjectConfiguration,
@@ -164,7 +165,11 @@ class V1CommandApplication:
                 run_id,
                 type(error).__name__,
             )
-            workspace_name = f".{configuration.target_directory.name}.scaffold-{run_id}"
+            workspace_name = derive_generation_workspace(
+                configuration.target_directory,
+                run_id=run_id,
+                configuration_digest=configuration.configuration_digest,
+            ).name
             return CommandOutcome(
                 1,
                 f"Project generation did not complete; failed workspace: {workspace_name}",

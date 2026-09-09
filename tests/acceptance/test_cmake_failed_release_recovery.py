@@ -70,7 +70,7 @@ class CMakeFailedReleaseRecoveryTests(unittest.TestCase):
             self.assertEqual(failed.returncode, 1)
             self.assertFalse(target.exists())
             self.assertTrue(capsule.exists())
-            workspaces = tuple(root.glob(".delivery.scaffold-*"))
+            workspaces = tuple(root.glob(".scw-*"))
             self.assertEqual(len(workspaces), 1)
             workspace = workspaces[0]
             self.assertIn(workspace.name, failed.stderr)

@@ -35,6 +35,8 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("does not arm capsule self-cleanup", normalized_user_guide)
         self.assertIn("example.com/example-tool", self.user_guide)
         self.assertIn("120 UTF-16 code units", self.user_guide)
+        self.assertIn(".scw-<workspace-id>", self.user_guide)
+        self.assertIn("does not repeat the project directory name", normalized_user_guide)
         self.assertIn("docs/user_guide.md", self.readme)
 
     def test_author_guide_preserves_the_trusted_data_only_extension_boundary(self) -> None:

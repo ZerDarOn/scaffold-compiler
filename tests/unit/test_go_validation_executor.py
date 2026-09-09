@@ -94,12 +94,15 @@ class GoValidationExecutorTests(unittest.TestCase):
             self.assertEqual(specifications[1].argv[1:], ("test", "./..."))
             self.assertEqual(specifications[2].argv[1], "build")
             build_root = (root / "validation-env" / "build").resolve()
+            temporary_root = (root / "validation-env" / "go-tmp").resolve()
             self.assertEqual(Path(specifications[2].argv[3]).parent, build_root)
             for specification in specifications:
                 environment = dict(specification.environment)
                 self.assertEqual(environment["GOTOOLCHAIN"], "local")
                 self.assertEqual(environment["GOWORK"], "off")
                 self.assertFalse(Path(environment["GOCACHE"]).is_relative_to(candidate.root))
+                self.assertEqual(Path(environment["GOTMPDIR"]), temporary_root)
+                self.assertTrue(temporary_root.is_dir())
             issue_verification_credential(report, current_candidate_digest=candidate.digest)
 
     def test_missing_tools_marks_required_gates_unavailable(self) -> None:

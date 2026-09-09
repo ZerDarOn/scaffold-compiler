@@ -22,6 +22,7 @@ from scaffold_compiler.generation_workflow import (
     CompletedGeneration,
     GenerationPreflightError,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.project_configuration import DatabaseChoice, ProjectConfiguration
 from scaffold_compiler.session_state_store import FailureStage, SessionState
 from scaffold_compiler.v1_command_application import GenerationRunner, V1CommandApplication
@@ -162,7 +163,7 @@ class V1CommandApplicationTests(unittest.TestCase):
 
             def reject_preflight(*args: object, **kwargs: object) -> CompletedGeneration:
                 raise GenerationPreflightError(
-                    "Windows generation path is too long; choose a shorter target directory."
+                    "Windows generation path is too long; choose a shorter target parent directory."
                 )
 
             application = V1CommandApplication(
@@ -178,8 +179,58 @@ class V1CommandApplicationTests(unittest.TestCase):
             outcome = application.run_non_interactive(config)
 
             self.assertEqual(outcome.exit_code, 1)
-            self.assertIn("choose a shorter target directory", outcome.message)
+            self.assertIn("choose a shorter target parent directory", outcome.message)
             self.assertNotIn("failed workspace", outcome.message)
+
+    def test_failure_reports_the_exact_short_workspace_name(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            catalog_root = root / "blueprints"
+            catalog_root.mkdir()
+            uv_executable = root / "uv"
+            uv_executable.write_bytes(b"uv")
+            config = root / "project.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "project_name": "Example API",
+                        "package_name": "example",
+                        "target_directory": "delivery",
+                        "database": "none",
+                        "container": "none",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            captured: dict[str, ProjectConfiguration] = {}
+
+            def fail_generation(
+                configuration: ProjectConfiguration,
+                **_options: object,
+            ) -> CompletedGeneration:
+                captured["configuration"] = configuration
+                raise RuntimeError("simulated generation failure")
+
+            application = V1CommandApplication(
+                catalog_root=catalog_root,
+                working_directory=root,
+                home_directory=root / "home",
+                uv_executable=uv_executable,
+                environment={},
+                generation_runner=fail_generation,
+                run_id_factory=lambda: "failed-run",
+            )
+
+            outcome = application.run_non_interactive(config)
+            configuration = captured["configuration"]
+            expected = derive_generation_workspace(
+                configuration.target_directory,
+                run_id="failed-run",
+                configuration_digest=configuration.configuration_digest,
+            )
+
+            self.assertEqual(outcome.exit_code, 1)
+            self.assertIn(f"failed workspace: {expected.name}", outcome.message)
 
     def test_preview_is_deterministic_and_does_not_create_a_workspace(self) -> None:
         with TemporaryDirectory() as directory:

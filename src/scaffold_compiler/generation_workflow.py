@@ -24,6 +24,10 @@ from scaffold_compiler.finalization import (
     prepare_commit_snapshot,
 )
 from scaffold_compiler.finalize_transaction import publish_confirmed_project
+from scaffold_compiler.generation_workspace_identity import (
+    CURRENT_WORKSPACE_SCHEME,
+    derive_generation_workspace,
+)
 from scaffold_compiler.path_safety import resolve_safe_output_path
 from scaffold_compiler.project_configuration import ProjectConfiguration
 from scaffold_compiler.session_state_store import (
@@ -140,15 +144,24 @@ def execute_generation_transaction(
     initial_session = GenerationSession.new(
         run_id=run_id,
         configuration_digest=configuration_digest,
+        target_name=target.name,
     )
     LOGGER.info(
-        "generation_workflow_started run_id=%s recipe_id=%s recipe_version=%s target_name=%s",
+        "generation_workflow_started run_id=%s recipe_id=%s recipe_version=%s",
         run_id,
         recipe_id or "legacy-v1",
         recipe_version or "legacy-v1",
-        target.name,
     )
-    workspace = target.parent / f".{target.name}.scaffold-{run_id}"
+    workspace = derive_generation_workspace(
+        target,
+        run_id=run_id,
+        configuration_digest=configuration_digest,
+    )
+    LOGGER.info(
+        "generation_workspace_selected run_id=%s scheme=%s",
+        run_id,
+        CURRENT_WORKSPACE_SCHEME,
+    )
     try:
         validate_workspace_path_budget(workspace, run_id=run_id)
     except WorkspacePathBudgetError as error:
@@ -288,12 +301,10 @@ def execute_generation_transaction(
         (workspace / "session.json").unlink()
         workspace.rmdir()
         LOGGER.info(
-            "generation_workflow_completed run_id=%s recipe_id=%s recipe_version=%s "
-            "target_name=%s files=%d",
+            "generation_workflow_completed run_id=%s recipe_id=%s recipe_version=%s files=%d",
             run_id,
             recipe_id or "legacy-v1",
             recipe_version or "legacy-v1",
-            target.name,
             len(candidate.files),
         )
         return CompletedGeneration(

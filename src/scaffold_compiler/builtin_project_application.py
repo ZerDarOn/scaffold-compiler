@@ -16,6 +16,7 @@ from scaffold_compiler.fastapi_project_validation_adapter import (
     FastApiValidationRuntime,
     build_fastapi_project_validation_adapter_registration,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.go_project_assembly_adapter import (
     build_go_project_assembly_adapter_registry,
 )
@@ -98,9 +99,10 @@ def build_builtin_project_command_application(
         if not isinstance(package_name, str) or database not in {"none", "postgres"}:
             raise ValueError("FastAPI runtime answers are invalid.")
         database_url = selected_environment.get("DATABASE_URL") if database == "postgres" else None
-        workspace = (
-            configuration.target_directory.parent
-            / f".{configuration.target_directory.name}.scaffold-{run_id}"
+        workspace = derive_generation_workspace(
+            configuration.target_directory,
+            run_id=run_id,
+            configuration_digest=configuration.configuration_digest,
         )
         return FastApiValidationRuntime(
             package_name=package_name,

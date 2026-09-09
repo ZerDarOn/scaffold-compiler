@@ -19,7 +19,8 @@ recipe cannot be mixed into another.
 
 The Go recipe asks for a portable lowercase binary name and module path. Defaults are derived from
 the project name as `example.com/<binary-name>`. Validation fixes `GOTOOLCHAIN=local` and
-`GOWORK=off`; it does not download project dependencies or write build output into the candidate.
+`GOWORK=off`, and binds `GOCACHE`, `GOMODCACHE`, and `GOTMPDIR` to the run-owned validation
+environment; it does not download project dependencies or write build output into the candidate.
 
 ## Create a configuration interactively
 
@@ -44,9 +45,10 @@ command. Review the generated JSON before using either one.
 
 Use schema 2 for all new projects. The target directory must not exist, while its parent must exist.
 Relative paths are resolved from the command's working directory. On Windows, the derived hidden
-workspace path must not exceed 120 UTF-16 code units; use a shorter target parent or project
-directory name if preflight rejects it. The rejection occurs before a lock or workspace is created.
-Specify answers explicitly when you want the configuration to remain obvious during review.
+workspace path must not exceed 120 UTF-16 code units. The fixed-length opaque
+`.scw-<workspace-id>` leaf does not repeat the project directory name; use a shorter target parent
+if preflight rejects it. The rejection occurs before a lock or workspace is created. Specify
+answers explicitly when you want the configuration to remain obvious during review.
 
 ### FastAPI without PostgreSQL or Docker
 
@@ -166,19 +168,21 @@ are not copied into the project.
 ## Recover a failed or interrupted run
 
 A failed command prints the preserved hidden workspace name. Use exactly that path.
+The opaque workspace ID is bound to the target, run ID, and configuration digest; do not derive or
+rename it manually.
 
 First inspect the bound state and failed gates:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz inspect `
-  --workspace .\.example-api.scaffold-<run-id>
+  --workspace .\.scw-<workspace-id>
 ```
 
 If publication never occurred and the state is safely discardable, remove only the failed evidence:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz discard `
-  --workspace .\.example-api.scaffold-<run-id> `
+  --workspace .\.scw-<workspace-id> `
   --confirm DISCARD
 ```
 
@@ -186,7 +190,7 @@ If publication succeeded but temporary cleanup was interrupted, retry the cleanu
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz cleanup `
-  --workspace .\.example-api.scaffold-<run-id> `
+  --workspace .\.scw-<workspace-id> `
   --confirm CLEANUP
 ```
 

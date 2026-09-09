@@ -124,8 +124,7 @@ class FastApiV1V2EquivalenceTests(unittest.TestCase):
                 self.assertEqual(legacy_outcome.exit_code, 0, legacy_outcome.message)
                 self.assertEqual(v2_outcome.exit_code, 0, v2_outcome.message)
                 self.assertEqual(snapshot_project(legacy_target), snapshot_project(v2_target))
-                self.assertFalse((root / f".legacy-delivery.scaffold-legacy-{index}").exists())
-                self.assertFalse((root / f".v2-delivery.scaffold-v2-{index}").exists())
+                self.assertEqual(tuple(root.glob(".scw-*")), ())
 
 
 if __name__ == "__main__":

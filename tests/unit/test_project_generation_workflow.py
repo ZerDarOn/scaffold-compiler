@@ -16,6 +16,7 @@ from scaffold_compiler.generation_workflow import (
     GenerationWorkflowError,
     execute_generation_transaction,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.project_assembly_adapter_registry import (
     ProjectAssemblyRequest,
     build_project_assembly_adapter_registry,
@@ -31,6 +32,7 @@ from scaffold_compiler.project_validation_adapter_registry import (
     build_project_validation_adapter_registry,
 )
 from scaffold_compiler.recipe_project_configuration import RecipeProjectConfiguration
+from scaffold_compiler.session_state_store import SessionStateStore
 from scaffold_compiler.validation import ValidationCheck, ValidationReport, ValidationStatus
 from scaffold_compiler.workspace_path_budget import WorkspacePathBudgetError
 
@@ -172,7 +174,12 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
                 observed["verification_digest"],
             )
             self.assertIn("recipe_id=c-like-test", "\n".join(captured.output))
-            self.assertFalse((root / ".delivery.scaffold-generic-run").exists())
+            workspace = derive_generation_workspace(
+                configuration.target_directory,
+                run_id="generic-run",
+                configuration_digest=configuration.configuration_digest,
+            )
+            self.assertFalse(workspace.exists())
 
     def test_rejects_recipe_identity_mismatch_before_creating_workspace(self) -> None:
         with TemporaryDirectory() as directory:
@@ -199,7 +206,7 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
                 )
 
             self.assertFalse(configuration.target_directory.exists())
-            self.assertEqual(tuple(root.glob(".delivery.scaffold-*")), ())
+            self.assertEqual(tuple(root.glob(".scw-*")), ())
 
     def test_transaction_rejects_unsafe_run_id_before_creating_workspace(self) -> None:
         with TemporaryDirectory() as directory:
@@ -219,13 +226,17 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
                 )
 
             self.assertFalse(configuration.target_directory.exists())
-            self.assertEqual(tuple(root.glob(".delivery.scaffold-*")), ())
+            self.assertEqual(tuple(root.glob(".scw-*")), ())
 
     def test_transaction_rejects_unsafe_windows_path_before_any_side_effect(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
             target = (root / "delivery").resolve()
-            expected_workspace = root.resolve() / ".delivery.scaffold-path-run"
+            expected_workspace = derive_generation_workspace(
+                target,
+                run_id="path-run",
+                configuration_digest="0" * 64,
+            )
             plan_compiler_called = False
 
             def plan_compiler() -> tuple[object, object]:
@@ -237,7 +248,8 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
                 patch(
                     "scaffold_compiler.generation_workflow.validate_workspace_path_budget",
                     side_effect=WorkspacePathBudgetError(
-                        "Windows generation path is too long; choose a shorter target directory."
+                        "Windows generation path is too long; "
+                        "choose a shorter target parent directory."
                     ),
                 ) as path_validator,
                 patch("scaffold_compiler.generation_workflow.TargetLockStore.acquire") as acquire,
@@ -258,6 +270,42 @@ class ProjectGenerationWorkflowTests(unittest.TestCase):
             self.assertFalse(target.exists())
             self.assertFalse(expected_workspace.exists())
             self.assertEqual(tuple(root.iterdir()), ())
+
+    def test_transaction_persists_target_binding_in_the_short_workspace(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            target = root / ("delivery-" + "x" * 80)
+            configuration_digest = "a" * 64
+            workspace = derive_generation_workspace(
+                target,
+                run_id="short-run",
+                configuration_digest=configuration_digest,
+            )
+
+            def fail_plan() -> tuple[object, object]:
+                raise RuntimeError("stop after workspace creation")
+
+            with (
+                self.assertLogs("scaffold_compiler.generation_workflow", level="INFO") as logs,
+                self.assertRaisesRegex(RuntimeError, "stop after workspace creation"),
+            ):
+                execute_generation_transaction(
+                    target=target,
+                    configuration_digest=configuration_digest,
+                    run_id="short-run",
+                    plan_compiler=fail_plan,  # type: ignore[arg-type]
+                    candidate_materializer=lambda *_args: None,  # type: ignore[arg-type]
+                    validator=lambda *_args: None,  # type: ignore[arg-type]
+                )
+
+            session = SessionStateStore(workspace / "session.json").load()
+            self.assertEqual(session.target_name, target.name)
+            self.assertTrue(workspace.exists())
+            self.assertFalse(target.exists())
+            output = "\n".join(logs.output)
+            self.assertIn("generation_workspace_selected", output)
+            self.assertIn("scheme=short-v1", output)
+            self.assertNotIn(target.name, output)
 
 
 if __name__ == "__main__":

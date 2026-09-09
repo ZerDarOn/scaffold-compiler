@@ -29,6 +29,7 @@ def new_session() -> GenerationSession:
     return GenerationSession.new(
         run_id="run-001",
         configuration_digest=CONFIGURATION_DIGEST,
+        target_name="delivery",
     )
 
 
@@ -178,6 +179,7 @@ class SessionStateMachineTests(unittest.TestCase):
 
         self.assertIs(reconfigured.state, SessionState.NEW)
         self.assertEqual(reconfigured.configuration_digest, SECOND_CONFIGURATION_DIGEST)
+        self.assertEqual(reconfigured.target_name, "delivery")
         self.assertIsNone(reconfigured.plan_digest)
         self.assertIsNone(reconfigured.candidate_digest)
         self.assertIsNone(reconfigured.verification_digest)
@@ -268,6 +270,34 @@ class SessionStateStoreTests(unittest.TestCase):
             store.save(expected)
 
             self.assertEqual(store.load(), expected)
+            record = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(record["schema_version"], 2)
+            self.assertEqual(record["target_name"], "delivery")
+
+    def test_loads_legacy_schema_one_without_target_binding(self) -> None:
+        with TemporaryDirectory() as directory:
+            state_path = Path(directory) / "session.json"
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "candidate_digest": None,
+                        "configuration_digest": CONFIGURATION_DIGEST,
+                        "failed_stage": None,
+                        "plan_digest": None,
+                        "revision": 0,
+                        "run_id": "legacy-run",
+                        "schema_version": 1,
+                        "state": "new",
+                        "verification_digest": None,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            loaded = SessionStateStore(state_path).load()
+
+            self.assertEqual(loaded.run_id, "legacy-run")
+            self.assertIsNone(loaded.target_name)
 
     def test_failed_atomic_replace_preserves_previous_complete_record(self) -> None:
         with TemporaryDirectory() as directory:

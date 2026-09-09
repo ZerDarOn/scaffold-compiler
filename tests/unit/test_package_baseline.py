@@ -13,7 +13,7 @@ class PackageBaselineTests(unittest.TestCase):
         import scaffold_compiler
 
         pyproject = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-        self.assertEqual(scaffold_compiler.__version__, "2.1.0")
+        self.assertEqual(scaffold_compiler.__version__, "2.2.0-dev")
         self.assertEqual(pyproject["project"]["dynamic"], ["version"])
         self.assertEqual(
             pyproject["tool"]["setuptools"]["dynamic"]["version"],

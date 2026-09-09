@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import stat
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -23,6 +22,7 @@ from scaffold_compiler.finalization import (
     cleanup_owned_candidate,
     verify_owned_candidate_cleanup_safety,
 )
+from scaffold_compiler.generation_workspace_identity import resolve_bound_generation_target
 from scaffold_compiler.session_state_store import (
     GenerationSession,
     SessionEvent,
@@ -43,7 +43,6 @@ from scaffold_compiler.validation_workspace import (
 
 LOGGER = logging.getLogger(__name__)
 
-_WORKSPACE_PREFIX_PATTERN: Final = re.compile(r"^\..+\.scaffold-")
 _ALLOWED_ENTRIES: Final = frozenset(
     {
         "candidate",
@@ -143,15 +142,13 @@ def _load_context(workspace: Path) -> tuple[Path, GenerationSession, Path]:
     if _is_link_or_reparse(session_path):
         raise ValueError("Cleanup session evidence is invalid.")
     session = SessionStateStore(session_path).load()
-    suffix = f".scaffold-{session.run_id}"
-    if not _WORKSPACE_PREFIX_PATTERN.match(
-        trusted_workspace.name
-    ) or not trusted_workspace.name.endswith(suffix):
-        raise ValueError("Cleanup workspace name does not bind the run ID.")
-    target_name = trusted_workspace.name[1 : -len(suffix)]
-    if not target_name:
-        raise ValueError("Cleanup target name is invalid.")
-    return trusted_workspace, session, trusted_workspace.parent / target_name
+    target = resolve_bound_generation_target(
+        trusted_workspace,
+        run_id=session.run_id,
+        configuration_digest=session.configuration_digest,
+        target_name=session.target_name,
+    )
+    return trusted_workspace, session, target
 
 
 def _load_cleanup_candidate(

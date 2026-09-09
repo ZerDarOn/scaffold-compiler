@@ -29,9 +29,9 @@ class GoDisposableReleaseWorkflowTests(unittest.TestCase):
                 repository,
                 root / "capsule",
                 capsule_id=GO_CAPSULE_ID,
-                compiler_version="2.1.0-dev",
+                compiler_version="2.2.0-dev",
             )
-            target = root / "delivery"
+            target = root / ("delivery-" + "x" * 80)
             config = root / "project.json"
             initialized = subprocess.run(
                 (
@@ -105,6 +105,7 @@ class GoDisposableReleaseWorkflowTests(unittest.TestCase):
                 time.sleep(0.05)
             self.assertFalse(capsule.exists(), "disposable generator was not removed")
             self.assertFalse(cleanup_root.exists(), "cleanup journal was not removed")
+            self.assertEqual(tuple(root.glob(".scw-*")), ())
             self.assertFalse(any("scaffold" in path.name for path in target.rglob("*")))
 
 

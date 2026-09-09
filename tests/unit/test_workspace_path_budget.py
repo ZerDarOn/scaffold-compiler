@@ -25,7 +25,7 @@ class WorkspacePathBudgetTests(unittest.TestCase):
         ):
             validate_workspace_path_budget(workspace, run_id="run-2", platform_name="nt")
 
-        self.assertIn("shorter target directory", str(error_context.exception))
+        self.assertIn("shorter target parent directory", str(error_context.exception))
         log_output = "\n".join(captured.output)
         self.assertIn("run_id=run-2", log_output)
         self.assertIn("platform=windows", log_output)

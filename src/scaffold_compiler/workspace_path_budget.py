@@ -39,5 +39,5 @@ def validate_workspace_path_budget(
         MAXIMUM_WINDOWS_WORKSPACE_PATH_UTF16_UNITS,
     )
     raise WorkspacePathBudgetError(
-        "Windows generation path is too long; choose a shorter target directory."
+        "Windows generation path is too long; choose a shorter target parent directory."
     )

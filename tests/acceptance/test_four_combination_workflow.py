@@ -9,6 +9,7 @@ from scaffold_compiler.generation_workflow import (
     GenerationWorkflowError,
     execute_non_interactive_generation,
 )
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.project_configuration import parse_project_configuration
 from scaffold_compiler.session_state_store import (
     FailureStage,
@@ -55,7 +56,7 @@ class FourCombinationWorkflowTests(unittest.TestCase):
                 self.assertEqual(actual_paths, expected_paths)
                 self.assertEqual(completed.session.state, SessionState.DONE)
                 self.assertTrue(target.is_dir())
-                self.assertFalse((root / f".{target.name}.scaffold-matrix-{index}").exists())
+                self.assertEqual(tuple(root.glob(".scw-*")), ())
                 self.assertFalse((root / f".{target.name}.scaffold.lock").exists())
                 self.assertFalse(
                     any(
@@ -110,7 +111,11 @@ class FourCombinationWorkflowTests(unittest.TestCase):
                     validator=mismatched_validator,
                 )
 
-            workspace = root / ".delivery.scaffold-mismatch"
+            workspace = derive_generation_workspace(
+                target,
+                run_id="mismatch",
+                configuration_digest=configuration.configuration_digest,
+            )
             self.assertFalse(target.exists())
             self.assertFalse((root / ".delivery.scaffold.lock").exists())
             self.assertTrue((workspace / "candidate").is_dir())

@@ -14,6 +14,7 @@ from scaffold_compiler.failed_workspace_recovery import (
     FailedWorkspaceInspection,
 )
 from scaffold_compiler.generation_workflow import CompletedGeneration, GenerationPreflightError
+from scaffold_compiler.generation_workspace_identity import derive_generation_workspace
 from scaffold_compiler.project_assembly_adapter_registry import (
     build_project_assembly_adapter_registry,
 )
@@ -134,7 +135,7 @@ class ProjectCommandApplicationTests(unittest.TestCase):
             self.assertEqual(summary["recipe_version"], "1.2.0")
             self.assertEqual(summary["blueprints"], ["generic-core"])
             self.assertEqual(summary["validations"], ["unit-tests"])
-            self.assertFalse((root / ".delivery.scaffold-generic-run").exists())
+            self.assertEqual(tuple(root.glob(".scw-*")), ())
 
     def test_run_passes_only_generic_configuration_recipe_and_runtime_context(self) -> None:
         with TemporaryDirectory() as directory:
@@ -195,7 +196,7 @@ class ProjectCommandApplicationTests(unittest.TestCase):
                     lambda *args, **kwargs: (_ for _ in ()).throw(
                         GenerationPreflightError(
                             "Windows generation path is too long; "
-                            "choose a shorter target directory."
+                            "choose a shorter target parent directory."
                         )
                     ),
                 ),
@@ -205,8 +206,40 @@ class ProjectCommandApplicationTests(unittest.TestCase):
             outcome = application.run_non_interactive(config_path)
 
             self.assertEqual(outcome.exit_code, 1)
-            self.assertIn("choose a shorter target directory", outcome.message)
+            self.assertIn("choose a shorter target parent directory", outcome.message)
             self.assertNotIn("failed workspace", outcome.message)
+
+    def test_run_failure_reports_the_exact_short_workspace_name(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            catalog_root, config_path = _write_fixture(root)
+            captured: dict[str, RecipeProjectConfiguration] = {}
+
+            def fail_generation(
+                configuration: RecipeProjectConfiguration,
+                *_args: object,
+                **_kwargs: object,
+            ) -> CompletedGeneration:
+                captured["configuration"] = configuration
+                raise RuntimeError("simulated generation failure")
+
+            application = _application(
+                root,
+                catalog_root,
+                generation_runner=fail_generation,
+                runtime_factory=lambda *args: object(),
+            )
+
+            outcome = application.run_non_interactive(config_path)
+            configuration = captured["configuration"]
+            expected = derive_generation_workspace(
+                configuration.target_directory,
+                run_id="generic-run",
+                configuration_digest=configuration.configuration_digest,
+            )
+
+            self.assertEqual(outcome.exit_code, 1)
+            self.assertIn(f"failed workspace: {expected.name}", outcome.message)
 
     def test_run_reports_runtime_initialization_failure_without_claiming_a_workspace(self) -> None:
         with TemporaryDirectory() as directory:

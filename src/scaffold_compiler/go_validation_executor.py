@@ -170,6 +170,8 @@ def _process_specification(
     gofmt: Path | None,
 ) -> ControlledProcessSpec:
     executable = environment_root / "build" / f"{binary_name}{'.exe' if os.name == 'nt' else ''}"
+    temporary_root = environment_root / "go-tmp"
+    temporary_root.mkdir(parents=True, exist_ok=True)
     if name == "go-format" and gofmt is not None:
         argv = (str(gofmt), "-l", *(str(candidate_root / item) for item in _GO_SOURCE_FILES))
     elif name == "go-test" and go is not None:
@@ -185,6 +187,7 @@ def _process_specification(
         ("CGO_ENABLED", "0"),
         ("GOCACHE", str(environment_root / "go-cache")),
         ("GOMODCACHE", str(environment_root / "module-cache")),
+        ("GOTMPDIR", str(temporary_root)),
         ("GOTOOLCHAIN", "local"),
         ("GOWORK", "off"),
     )
