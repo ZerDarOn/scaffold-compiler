@@ -58,9 +58,15 @@ Phase 3 - 候选发布
 
 ## 5. 状态
 
-- Done：Tasks 1.1–2.1；公开 Issue/PR 为零，最新稳定版为 `v2.1.0`，V2.1 后差异符合
+- Done：Tasks 1.1–3.2；公开 Issue/PR 为零，最新稳定版为 `v2.1.0`，V2.1 后差异符合
   短工作区方案；RC1 版本身份已统一。本地 130 个文件格式检查、lint、114 个文件严格
   mypy、301 passed/1 个 POSIX 平台测试跳过，确定性胶囊与摘要合同通过。
+- CI：精确版本提交 `9ace302` 的 quality `34318378515` 全绿；标签工作流
+  `34318659954` 的 Windows、Ubuntu、Linux 真实组合、构建和发布任务全部成功。
+- Release：`v2.2.0-rc.1` 已作为 prerelease 发布；公开 ZIP SHA-256 为
+  `690e04b5a13c02ed85887c2144b14c591b650b95efaaa4fd6ab46814340fc025`。
+- Asset audit：下载 ZIP 与校验文件匹配；下载胶囊以 89 字符目标叶完成 Go 配方真实生成、
+  `.scw-*` 清理、胶囊自清理及生成后 `go test ./...`，临时审计目录已删除。
 - Review：版本冻结未改变运行时；无未解决的高、中风险发现。
-- Next：Task 2.2，提交并等待精确提交的 Windows、Ubuntu 和真实发布组合 CI。
+- Next：进入 RC1 观察期；`v2.1.0` 继续是最新稳定版，V2.2 不立即晋升 stable。
 - Rollback point：`v2.1.0` 标签与发布资产不移动。
