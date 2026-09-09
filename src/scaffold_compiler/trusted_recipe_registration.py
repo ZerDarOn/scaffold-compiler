@@ -352,7 +352,7 @@ def _validate_recipe_bindings(
         _raise_registration_error("questionnaire_recipe_mismatch")
     if recipe.recipe_id != registration.runtime_factory.recipe_id:
         _raise_registration_error("runtime_factory_recipe_mismatch")
-    if set(recipe.allowed_validation_gates) != set(
+    if not set(recipe.allowed_validation_gates).issubset(
         registration.validation_adapter.validation_gates
     ):
         _raise_registration_error("validation_gate_binding_mismatch")

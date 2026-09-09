@@ -46,28 +46,42 @@ def _collect_go_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
     return _go_answers(source, sink)
 
 
-_QUESTIONNAIRES: tuple[RecipeQuestionnaireRegistration, ...] = (
-    RecipeQuestionnaireRegistration(
+def build_fastapi_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
+    """Return the trusted FastAPI questionnaire registration."""
+    return RecipeQuestionnaireRegistration(
         FASTAPI_RECIPE_ID,
         "Python FastAPI service",
         _collect_fastapi_answers,
-    ),
-    RecipeQuestionnaireRegistration(
+    )
+
+
+def build_cmake_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
+    """Return the trusted CMake questionnaire registration."""
+    return RecipeQuestionnaireRegistration(
         CMAKE_RECIPE_ID,
         "C11/CMake command-line project",
         _collect_cmake_answers,
-    ),
-    RecipeQuestionnaireRegistration(
+    )
+
+
+def build_go_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
+    """Return the trusted Go questionnaire registration."""
+    return RecipeQuestionnaireRegistration(
         GO_RECIPE_ID,
         "Go command-line project",
         _collect_go_answers,
-    ),
-)
+    )
 
 
 def build_builtin_recipe_questionnaire_registry() -> RecipeQuestionnaireRegistry:
     """Return the trusted questionnaires shipped with this compiler version."""
-    return build_recipe_questionnaire_registry(_QUESTIONNAIRES)
+    return build_recipe_questionnaire_registry(
+        (
+            build_fastapi_recipe_questionnaire_registration(),
+            build_cmake_recipe_questionnaire_registration(),
+            build_go_recipe_questionnaire_registration(),
+        )
+    )
 
 
 def write_interactive_configuration(

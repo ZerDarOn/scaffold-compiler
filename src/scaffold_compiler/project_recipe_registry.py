@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable, Mapping, Set
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Final, NoReturn
 
@@ -154,6 +155,30 @@ def build_builtin_project_recipe_registry() -> ProjectRecipeRegistry:
             GO_VALIDATION_ADAPTER_KEY,
         },
     )
+
+
+def build_builtin_project_recipe_declarations() -> Mapping[str, Mapping[str, object]]:
+    """Return defensive copies of the declarations shipped with the compiler."""
+    return {
+        FASTAPI_RECIPE_ID: build_fastapi_project_recipe_declaration(),
+        CMAKE_RECIPE_ID: build_cmake_project_recipe_declaration(),
+        GO_RECIPE_ID: build_go_project_recipe_declaration(),
+    }
+
+
+def build_fastapi_project_recipe_declaration() -> Mapping[str, object]:
+    """Return a defensive copy of the built-in FastAPI declaration."""
+    return deepcopy(_FASTAPI_RECIPE_DECLARATION)
+
+
+def build_cmake_project_recipe_declaration() -> Mapping[str, object]:
+    """Return a defensive copy of the built-in CMake declaration."""
+    return deepcopy(_CMAKE_RECIPE_DECLARATION)
+
+
+def build_go_project_recipe_declaration() -> Mapping[str, object]:
+    """Return a defensive copy of the built-in Go declaration."""
+    return deepcopy(_GO_RECIPE_DECLARATION)
 
 
 def _parse_project_recipe(raw_recipe: Mapping[str, object]) -> ProjectRecipe:

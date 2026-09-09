@@ -467,6 +467,23 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
 
             self.assertEqual(error_context.exception.code, expected_code)
 
+    def test_validation_adapter_may_report_fixed_internal_gates(self) -> None:
+        registration = _registration()
+        registration = replace(
+            registration,
+            validation_adapter=replace(
+                registration.validation_adapter,
+                validation_gates=("example-test", "internal-safety"),
+            ),
+        )
+
+        compiled = compile_trusted_recipe_registrations((registration,))
+
+        self.assertEqual(
+            compiled.validation_registry.get("example-validation").validation_gates,
+            ("example-test", "internal-safety"),
+        )
+
     def test_rejects_empty_registration_set(self) -> None:
         with self.assertRaises(TrustedRecipeRegistrationError) as error_context:
             compile_trusted_recipe_registrations(())

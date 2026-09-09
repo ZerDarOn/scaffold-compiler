@@ -133,9 +133,9 @@ def parse_builtin_recipe_project_configuration(
 def build_builtin_answer_normalizers() -> Mapping[str, AnswerNormalizer]:
     """Return the statically imported answer normalizers shipped by the compiler."""
     return {
-        FASTAPI_ANSWER_PARSER_KEY: _normalize_fastapi_answers,
-        CMAKE_ANSWER_PARSER_KEY: _normalize_cmake_answers,
-        GO_ANSWER_PARSER_KEY: _normalize_go_answers,
+        FASTAPI_ANSWER_PARSER_KEY: normalize_fastapi_recipe_answers,
+        CMAKE_ANSWER_PARSER_KEY: normalize_cmake_recipe_answers,
+        GO_ANSWER_PARSER_KEY: normalize_go_recipe_answers,
     }
 
 
@@ -237,7 +237,7 @@ def _parse_legacy_fastapi_configuration(
     return convert_legacy_project_configuration(legacy, registry=registry)
 
 
-def _normalize_fastapi_answers(
+def normalize_fastapi_recipe_answers(
     raw_answers: Mapping[str, object],
     project_name: str,
 ) -> Mapping[str, JSONValue]:
@@ -260,7 +260,7 @@ def _normalize_fastapi_answers(
     }
 
 
-def _normalize_cmake_answers(
+def normalize_cmake_recipe_answers(
     raw_answers: Mapping[str, object],
     project_name: str,
 ) -> Mapping[str, JSONValue]:
@@ -288,7 +288,7 @@ def _normalize_cmake_answers(
     return {"strict_warnings": strict_warnings, "target_name": target_name}
 
 
-def _normalize_go_answers(
+def normalize_go_recipe_answers(
     raw_answers: Mapping[str, object],
     project_name: str,
 ) -> Mapping[str, JSONValue]:
