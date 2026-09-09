@@ -97,10 +97,17 @@ Can parallelize : 无；所有发布副作用必须按门串行。
 
 ## 6. 状态
 
-- Done：Tasks 1.1–2.1；公开状态、稳定版身份、测试合同、README 和本地质量门均已完成。
+- Done：Tasks 1.1–3.2；公开状态、稳定版身份、本地质量门、精确提交 CI、稳定标签、GitHub Release 和下载资产验收均已完成。
 - Tests：格式检查 125 个文件、lint、111 个文件严格 mypy 全部通过；全量 296 passed、4 skipped。主机默认
   `%TEMP%` 首次运行被 Code Integrity 策略阻止未签名验证入口，事件 3033/3077 已确认；同一全量测试
   在仓库内受信任临时根通过，未修改产品或放宽安全边界。
-- Next：Task 2.2，提交并等待精确稳定版本提交的主分支 CI。
+- CI：稳定准备提交 `b183b81` 的主分支 quality `34312757480` 全绿；稳定标签 release-capsule
+  `34313039248` 的质量、构建和发布任务全部成功。
+- Release：`v2.1.0` 已作为非 prerelease 正式发布，下载胶囊 SHA-256 为
+  `26fb4e75d4a9c7bcd6763d83d3b4a51637a1c7bed34b2d0f15e2e927aae79638`。
+- Asset audit：公开 ZIP 与校验文件摘要一致；下载胶囊完成 Go 配方 preview、真实生成、Finalize、
+  自清理和生成后 `go test ./...`，成品生成器痕迹为零。
+- Review：无剩余高/中等级发现；稳定版与 RC2 的唯一代码差异是包版本身份。
+- Next：Task 4.1，提交发布证据并等待最终主分支 CI。
 - Debt：Windows 120 UTF-16 单元兼容护栏与固定 Go 1.22.12 升级策略留待后续版本评审。
 - Rollback point：`v2.0.0`、`v2.1.0-rc.1`、`v2.1.0-rc.2` 标签均不移动。

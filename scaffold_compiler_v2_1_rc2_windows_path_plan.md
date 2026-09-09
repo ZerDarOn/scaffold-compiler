@@ -103,6 +103,7 @@ Can parallelize : 文档草案可与核心测试并行；实现、版本和发�
 - Release：`v2.1.0-rc.2` 已作为 prerelease 发布，下载胶囊 SHA-256 为 `dcfe9170e2ce2322085fcdde1aba83fa4f76aaa68f6efe20635f247d7f95984a`。
 - Asset audit：下载 ZIP 摘要匹配；下载胶囊的长路径零副作用拒绝和 Go 发布、自清理、生成后测试均通过。
 - Review：无剩余高/中等级发现；完整路径不进入日志，策略为 O(路径长度) 且发生在第一项磁盘副作用之前。
-- Next：保留 RC2 观察窗口；没有新缺陷时单独评审 V2.1 stable。
+- Promotion：RC2 观察后没有新增公开缺陷，`v2.1.0` 已正式发布并通过下载资产验收；稳定胶囊 SHA-256 为 `26fb4e75d4a9c7bcd6763d83d3b4a51637a1c7bed34b2d0f15e2e927aae79638`。
+- Next：本方案转为历史修复记录；V2.1 进入稳定维护。
 - Debt：120 单元为兼容性护栏；V2.2 可评审版本化短工作区命名以减少限制。
 - Rollback point：`v2.1.0-rc.1` 与 `v2.0.0` 均保持不可变。

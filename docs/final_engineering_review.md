@@ -7,10 +7,15 @@ FastAPI compatibility path, disposable release lifecycle, failure recovery, docu
 and CI. Findings are ranked by impact to user data, security boundaries, correctness, and release
 claims.
 
+Status update (2026-09-09): this historical review qualified the V2 architecture before its first
+public release. V2.0.0 and V2.1.0 have since been published as stable releases after their exact
+release commits, tag workflows, checksums, and downloaded assets passed the required gates.
+
 ## Outcome
 
 No unresolved critical, high, or medium finding remains. V2 is suitable for a release-candidate
-build after the explicit version and release-asset task. It is not yet a published V2 release.
+build after the explicit version and release-asset task. At the review time, it was not yet a
+published V2 release.
 
 ## Resolved findings
 
@@ -67,11 +72,13 @@ invariant.
 - `V1CommandApplication` remains as a compatibility wrapper beside the generic application. It is
   covered by equivalence tests and should be removed only in a separately versioned compatibility
   decision, not during the V2 release-candidate change.
-- The release candidate still needs an explicit version bump, deterministic capsule/archive/checksum
-  build, clean-tree verification, and a separately authorized tag/GitHub Release action.
+- At the review time, the release candidate still needed an explicit version bump, deterministic
+  capsule/archive/checksum build, clean-tree verification, and a separately authorized tag/GitHub
+  Release action. Those gates were subsequently completed for V2.0.0 and V2.1.0.
 
-## Release gate
+## Historical release gate
 
-Proceed to Task 7.3 only when the release version is chosen and public release side effects are
-explicitly authorized. Build assets first, rerun the full local gates, require all GitHub Actions
-jobs to pass for the exact release commit, then tag and publish without modifying generated assets.
+The gate required a chosen version and explicit authorization for public release side effects:
+build assets first, rerun the full local gates, require all GitHub Actions jobs to pass for the
+exact release commit, then tag and publish without modifying generated assets. The published stable
+releases followed this sequence.

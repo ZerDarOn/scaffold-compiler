@@ -131,6 +131,7 @@ ADR-GO-2
 - Release：`v2.1.0-rc.1` 已作为 prerelease 发布，胶囊 SHA-256 为 `4c07c3a2dbc24d9c818b57c64588d294129f43fca2bea3b2cf7a09a7574038c4`。
 - Review：RC1 资产审查发现 Windows 深目标路径会耗尽传统工具路径预算；系统安全拒绝清理且未误删，RC2 增加事务前置路径预算门。
 - Remediation：`v2.1.0-rc.2` 已完成双平台、Linux 真实组合与下载资产验收，胶囊 SHA-256 为 `dcfe9170e2ce2322085fcdde1aba83fa4f76aaa68f6efe20635f247d7f95984a`。
-- Next：保留 RC2 观察窗口；没有新缺陷时再决定 V2.1 stable。
+- Stable：`v2.1.0` 已正式发布；标签工作流和下载资产验收通过，胶囊 SHA-256 为 `26fb4e75d4a9c7bcd6763d83d3b4a51637a1c7bed34b2d0f15e2e927aae79638`。
+- Next：V2.1 进入稳定维护；优先处理真实使用反馈，不扩大已发布安全边界。
 - Debt：生成项目的 CI 使用 Go 1.22.x；编译器仓库 CI 固定 Go 1.22.12，后续升级需显式评审。
 - Rollback point：`v2.0.0` 正式标签与发布资产不移动。
