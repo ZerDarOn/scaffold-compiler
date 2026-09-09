@@ -8,7 +8,7 @@ and CI. Findings are ranked by impact to user data, security boundaries, correct
 claims.
 
 Status update (2026-09-09): this historical review qualified the V2 architecture before its first
-public release. V2.0.0 and V2.1.0 have since been published as stable releases after their exact
+public release. V2.0.0, V2.1.0, and V2.2.0 have since been published as stable releases after their exact
 release commits, tag workflows, checksums, and downloaded assets passed the required gates.
 
 ## Outcome
@@ -74,7 +74,7 @@ invariant.
   decision, not during the V2 release-candidate change.
 - At the review time, the release candidate still needed an explicit version bump, deterministic
   capsule/archive/checksum build, clean-tree verification, and a separately authorized tag/GitHub
-  Release action. Those gates were subsequently completed for V2.0.0 and V2.1.0.
+  Release action. Those gates were subsequently completed for V2.0.0, V2.1.0, and V2.2.0.
 
 ## Historical release gate
 
