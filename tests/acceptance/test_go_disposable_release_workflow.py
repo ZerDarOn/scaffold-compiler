@@ -29,7 +29,7 @@ class GoDisposableReleaseWorkflowTests(unittest.TestCase):
                 repository,
                 root / "capsule",
                 capsule_id=GO_CAPSULE_ID,
-                compiler_version="2.2.0",
+                compiler_version="2.3.0-rc.1",
             )
             target = root / ("delivery-" + "x" * 80)
             config = root / "project.json"

@@ -7,7 +7,7 @@ project contains no generator, blueprint, journal, or run metadata.
 
 Latest stable release: [`v2.2.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.2.0).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
-The `main` branch currently identifies itself as the unreleased `2.3.0-dev` line.
+The `main` branch currently identifies itself as the unpublished `2.3.0-rc.1` candidate.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
@@ -189,7 +189,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.3.0-dev `
+  --destination .\dist\scaffold-compiler-2.3.0-rc.1 `
   --archive
 ```
 
