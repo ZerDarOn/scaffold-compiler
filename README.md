@@ -5,9 +5,8 @@ a verified, standalone project. It is a disposable generator, not a long-term pr
 after a successful release run, an external supervisor removes the generator capsule. The finalized
 project contains no generator, blueprint, journal, or run metadata.
 
-Latest stable release: [`v2.0.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.0.0).
+Latest stable release: [`v2.1.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.1.0).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
-Current prerelease: [`v2.1.0-rc.2`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.1.0-rc.2).
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
@@ -185,7 +184,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.1.0-rc.2 `
+  --destination .\dist\scaffold-compiler-2.1.0 `
   --archive
 ```
 
