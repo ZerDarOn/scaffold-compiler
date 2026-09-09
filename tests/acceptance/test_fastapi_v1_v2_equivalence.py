@@ -4,6 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TextIO
 
 from scaffold_compiler.project_command_application import ProjectCommandApplication
 from scaffold_compiler.project_recipe_registry import (
@@ -15,7 +16,16 @@ from scaffold_compiler.project_validation_adapter_registry import (
     ProjectValidationRequest,
     build_project_validation_adapter_registry,
 )
-from scaffold_compiler.recipe_project_configuration import build_builtin_answer_normalizers
+from scaffold_compiler.recipe_project_configuration import (
+    JSONValue,
+    build_builtin_answer_normalizers,
+)
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeQuestionnaireRegistration,
+    RecipeRuntimeFactoryRegistration,
+    build_recipe_questionnaire_registry,
+    build_recipe_runtime_factory_registry,
+)
 from scaffold_compiler.v1_project_compiler import (
     build_fastapi_project_assembly_adapter_registry,
 )
@@ -37,6 +47,11 @@ def accept_candidate(request: ProjectValidationRequest) -> ValidationReport:
     )
 
 
+def collect_fastapi_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
+    del source, sink
+    return {}
+
+
 def build_application(root: Path, *, run_id: str) -> ProjectCommandApplication:
     repository = Path(__file__).parents[2]
     return ProjectCommandApplication(
@@ -44,6 +59,15 @@ def build_application(root: Path, *, run_id: str) -> ProjectCommandApplication:
         working_directory=root,
         home_directory=root / "home",
         recipe_registry=build_builtin_project_recipe_registry(),
+        questionnaire_registry=build_recipe_questionnaire_registry(
+            (
+                RecipeQuestionnaireRegistration(
+                    "python-fastapi-service",
+                    "Python FastAPI service",
+                    collect_fastapi_answers,
+                ),
+            )
+        ),
         answer_normalizers=build_builtin_answer_normalizers(),
         assembly_registry=build_fastapi_project_assembly_adapter_registry(),
         validation_registry=build_project_validation_adapter_registry(
@@ -55,7 +79,14 @@ def build_application(root: Path, *, run_id: str) -> ProjectCommandApplication:
                 ),
             )
         ),
-        validation_runtime_factory=lambda configuration, recipe, selected_run_id: object(),
+        runtime_factory_registry=build_recipe_runtime_factory_registry(
+            (
+                RecipeRuntimeFactoryRegistration(
+                    "python-fastapi-service",
+                    lambda configuration, recipe, selected_run_id: object(),
+                ),
+            )
+        ),
         run_id_factory=lambda: run_id,
     )
 

@@ -55,7 +55,7 @@ class BuiltinProjectApplicationTests(unittest.TestCase):
                 environment={},
             )
 
-            runtime = application._validation_runtime_factory(
+            runtime = application._runtime_factory_registry.create(
                 configuration,
                 recipe,
                 "run-1",

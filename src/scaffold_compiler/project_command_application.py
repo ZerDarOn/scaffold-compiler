@@ -35,11 +35,14 @@ from scaffold_compiler.recipe_project_configuration import (
     RecipeProjectConfiguration,
     parse_recipe_project_configuration,
 )
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeQuestionnaireRegistry,
+    RecipeRuntimeFactoryRegistry,
+)
 
 LOGGER = logging.getLogger(__name__)
 
 ProjectGenerationRunner = Callable[..., CompletedGeneration]
-ValidationRuntimeFactory = Callable[[RecipeProjectConfiguration, ProjectRecipe, str], object]
 
 
 class ProjectCommandApplication:
@@ -52,10 +55,11 @@ class ProjectCommandApplication:
         working_directory: Path,
         home_directory: Path,
         recipe_registry: ProjectRecipeRegistry,
+        questionnaire_registry: RecipeQuestionnaireRegistry,
         answer_normalizers: Mapping[str, AnswerNormalizer],
         assembly_registry: ProjectAssemblyAdapterRegistry,
         validation_registry: ProjectValidationAdapterRegistry,
-        validation_runtime_factory: ValidationRuntimeFactory,
+        runtime_factory_registry: RecipeRuntimeFactoryRegistry,
         generation_runner: ProjectGenerationRunner = execute_project_generation,
         run_id_factory: Callable[[], str] | None = None,
     ) -> None:
@@ -63,10 +67,11 @@ class ProjectCommandApplication:
         self._working_directory = working_directory.resolve(strict=True)
         self._home_directory = home_directory.resolve(strict=False)
         self._recipe_registry = recipe_registry
+        self._questionnaire_registry = questionnaire_registry
         self._answer_normalizers = dict(answer_normalizers)
         self._assembly_registry = assembly_registry
         self._validation_registry = validation_registry
-        self._validation_runtime_factory = validation_runtime_factory
+        self._runtime_factory_registry = runtime_factory_registry
         self._generation_runner = generation_runner
         self._run_id_factory = run_id_factory or (lambda: uuid.uuid4().hex)
 
@@ -83,6 +88,7 @@ class ProjectCommandApplication:
                 input_stream=input_stream,
                 output_stream=output_stream,
                 recipe_registry=self._recipe_registry,
+                questionnaire_registry=self._questionnaire_registry,
                 answer_normalizers=self._answer_normalizers,
                 working_directory=self._working_directory,
                 home_directory=self._home_directory,
@@ -146,7 +152,7 @@ class ProjectCommandApplication:
             return CommandOutcome(1, "Configuration could not be loaded.")
         run_id = self._run_id_factory()
         try:
-            runtime_context = self._validation_runtime_factory(configuration, recipe, run_id)
+            runtime_context = self._runtime_factory_registry.create(configuration, recipe, run_id)
         except Exception as error:
             LOGGER.error(
                 "project_validation_runtime_initialization_failed "

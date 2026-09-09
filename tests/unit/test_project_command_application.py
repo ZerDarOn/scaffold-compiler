@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import cast
+from typing import TextIO, cast
 from unittest.mock import patch
 
 from scaffold_compiler.cleanup_recovery import CleanupRecoveryResult
@@ -28,6 +28,12 @@ from scaffold_compiler.project_validation_adapter_registry import (
 )
 from scaffold_compiler.recipe_project_configuration import JSONValue, RecipeProjectConfiguration
 from scaffold_compiler.session_state_store import FailureStage, SessionState
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeQuestionnaireRegistration,
+    RecipeRuntimeFactoryRegistration,
+    build_recipe_questionnaire_registry,
+    build_recipe_runtime_factory_registry,
+)
 
 
 def _recipe() -> ProjectRecipe:
@@ -53,6 +59,11 @@ def _normalizer(raw: object, project_name: str) -> dict[str, JSONValue]:
     if not isinstance(target_name, str):
         raise ValueError("Invalid test target name.")
     return {"target_name": target_name}
+
+
+def _collect_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
+    del source, sink
+    return {"target_name": "generic_cli"}
 
 
 def _write_fixture(root: Path) -> tuple[Path, Path]:
@@ -106,10 +117,26 @@ def _application(
         working_directory=root,
         home_directory=root / "home",
         recipe_registry=ProjectRecipeRegistry((recipe,)),
+        questionnaire_registry=build_recipe_questionnaire_registry(
+            (
+                RecipeQuestionnaireRegistration(
+                    recipe.recipe_id,
+                    "Generic command-line project",
+                    _collect_answers,
+                ),
+            )
+        ),
         answer_normalizers={recipe.answer_parser_key: _normalizer},
         assembly_registry=build_project_assembly_adapter_registry(()),
         validation_registry=build_project_validation_adapter_registry(()),
-        validation_runtime_factory=runtime_factory,  # type: ignore[arg-type]
+        runtime_factory_registry=build_recipe_runtime_factory_registry(
+            (
+                RecipeRuntimeFactoryRegistration(
+                    recipe.recipe_id,
+                    runtime_factory,  # type: ignore[arg-type]
+                ),
+            )
+        ),
         generation_runner=generation_runner,
         run_id_factory=lambda: "generic-run",
     )

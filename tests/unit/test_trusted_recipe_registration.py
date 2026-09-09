@@ -3,7 +3,8 @@ from __future__ import annotations
 import unittest
 from collections.abc import Mapping
 from dataclasses import replace
-from typing import TextIO
+from pathlib import Path
+from typing import TextIO, cast
 
 from scaffold_compiler.candidate_project_assembler import CandidateAssemblyResult
 from scaffold_compiler.project_assembly_adapter_registry import ProjectAssemblyRequest
@@ -17,10 +18,15 @@ from scaffold_compiler.recipe_project_configuration import (
     RecipeProjectConfiguration,
 )
 from scaffold_compiler.trusted_recipe_registration import (
+    CompiledTrustedRecipeRegistrations,
     RecipeQuestionnaireRegistration,
+    RecipeQuestionnaireRegistryError,
     RecipeRuntimeFactoryRegistration,
+    RecipeRuntimeFactoryRegistryError,
     TrustedRecipeRegistration,
     TrustedRecipeRegistrationError,
+    build_recipe_questionnaire_registry,
+    build_recipe_runtime_factory_registry,
     compile_trusted_recipe_registrations,
 )
 from scaffold_compiler.validation import ValidationReport
@@ -120,6 +126,21 @@ def _registration(
     )
 
 
+def _recipe_from(compiled: CompiledTrustedRecipeRegistrations) -> ProjectRecipe:
+    return compiled.recipe_registry.recipes[0]
+
+
+def _configuration_for(recipe: ProjectRecipe) -> RecipeProjectConfiguration:
+    return RecipeProjectConfiguration(
+        schema_version=2,
+        recipe_id=recipe.recipe_id,
+        recipe_version=recipe.version,
+        project_name="Example CLI",
+        target_directory=Path("delivery"),
+        _answers_json="{}",
+    )
+
+
 class TrustedRecipeRegistrationTests(unittest.TestCase):
     def test_compiles_every_registry_from_one_complete_registration_set(self) -> None:
         registrations = (
@@ -145,7 +166,10 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
         )
         self.assertEqual(tuple(compiled.answer_normalizers), ("example-answers", "other-answers"))
         self.assertEqual(
-            tuple(item.recipe_id for item in compiled.questionnaires),
+            tuple(
+                item.recipe_id
+                for item in compiled.questionnaire_registry.for_recipes(compiled.recipe_registry)
+            ),
             ("example-cli", "other-cli"),
         )
         self.assertIs(compiled.assembly_registry.get("example-assembly"), _assemble)
@@ -153,8 +177,137 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
             compiled.validation_registry.get("other-validation").validation_gates,
             ("other-test",),
         )
-        self.assertIs(compiled.runtime_factories[0].factory, _runtime_factory)
+        self.assertEqual(
+            tuple(item.recipe_id for item in compiled.runtime_factory_registry.registrations),
+            ("example-cli", "other-cli"),
+        )
         self.assertIn("trusted_recipe_registration_compile_completed recipes=2", logs.output[-1])
+
+    def test_questionnaire_registry_requires_the_exact_recipe_set(self) -> None:
+        compiled = compile_trusted_recipe_registrations((_registration(),))
+        extra_recipe = replace(_recipe_from(compiled), recipe_id="other-cli")
+
+        with self.assertRaises(RecipeQuestionnaireRegistryError) as error_context:
+            compiled.questionnaire_registry.for_recipes(
+                type(compiled.recipe_registry)((_recipe_from(compiled), extra_recipe))
+            )
+
+        self.assertEqual(error_context.exception.code, "questionnaire_recipe_set_mismatch")
+
+    def test_runtime_factory_registry_dispatches_only_the_matching_recipe(self) -> None:
+        called: list[str] = []
+
+        def selected_factory(
+            configuration: RecipeProjectConfiguration,
+            recipe: ProjectRecipe,
+            run_id: str,
+        ) -> object:
+            del configuration, recipe
+            called.append(run_id)
+            return "selected-runtime"
+
+        def other_factory(*_args: object) -> object:
+            raise AssertionError("unselected runtime factory must not run")
+
+        first = _registration()
+        second = _registration(
+            "other-cli",
+            answer_key="other-answers",
+            assembly_key="other-assembly",
+            validation_key="other-validation",
+            gates=("other-test",),
+        )
+        compiled = compile_trusted_recipe_registrations(
+            (
+                replace(
+                    first,
+                    runtime_factory=replace(first.runtime_factory, factory=selected_factory),
+                ),
+                replace(
+                    second,
+                    runtime_factory=replace(second.runtime_factory, factory=other_factory),
+                ),
+            )
+        )
+        recipe = _recipe_from(compiled)
+        configuration = _configuration_for(recipe)
+
+        runtime = compiled.runtime_factory_registry.create(
+            configuration,
+            recipe,
+            "runtime-run",
+        )
+
+        self.assertEqual(runtime, "selected-runtime")
+        self.assertEqual(called, ["runtime-run"])
+
+    def test_runtime_factory_registry_rejects_identity_mismatch_before_dispatch(self) -> None:
+        called = False
+
+        def factory(*_args: object) -> object:
+            nonlocal called
+            called = True
+            return object()
+
+        registration = _registration()
+        compiled = compile_trusted_recipe_registrations(
+            (
+                replace(
+                    registration,
+                    runtime_factory=replace(registration.runtime_factory, factory=factory),
+                ),
+            )
+        )
+        recipe = _recipe_from(compiled)
+        configuration = replace(_configuration_for(recipe), recipe_version="9.9.9")
+
+        with self.assertRaises(RecipeRuntimeFactoryRegistryError) as error_context:
+            compiled.runtime_factory_registry.create(configuration, recipe, "runtime-run")
+
+        self.assertEqual(error_context.exception.code, "runtime_request_recipe_mismatch")
+        self.assertFalse(called)
+
+    def test_component_registries_reject_duplicate_recipe_bindings(self) -> None:
+        questionnaire = _registration().questionnaire
+        runtime_factory = _registration().runtime_factory
+        cases = (
+            (
+                lambda: build_recipe_questionnaire_registry((questionnaire, questionnaire)),
+                RecipeQuestionnaireRegistryError,
+                "duplicate_questionnaire_recipe",
+            ),
+            (
+                lambda: build_recipe_runtime_factory_registry((runtime_factory, runtime_factory)),
+                RecipeRuntimeFactoryRegistryError,
+                "duplicate_runtime_factory_recipe",
+            ),
+        )
+
+        for build, expected_error, expected_code in cases:
+            with (
+                self.subTest(expected_code=expected_code),
+                self.assertRaises(expected_error) as error_context,
+            ):
+                build()
+
+            registered_error = cast(
+                RecipeQuestionnaireRegistryError | RecipeRuntimeFactoryRegistryError,
+                error_context.exception,
+            )
+            self.assertEqual(registered_error.code, expected_code)
+
+    def test_runtime_factory_registry_rejects_an_unregistered_recipe(self) -> None:
+        compiled = compile_trusted_recipe_registrations((_registration(),))
+        recipe = replace(_recipe_from(compiled), recipe_id="other-cli")
+
+        with self.assertRaises(RecipeRuntimeFactoryRegistryError) as error_context:
+            compiled.runtime_factory_registry.create(
+                _configuration_for(recipe),
+                recipe,
+                "runtime-run",
+            )
+
+        self.assertEqual(error_context.exception.code, "unknown_runtime_factory")
 
     def test_rejects_cross_component_identity_mismatches(self) -> None:
         cases = (

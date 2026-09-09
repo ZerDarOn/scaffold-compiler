@@ -3,15 +3,22 @@ from __future__ import annotations
 import io
 import json
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TextIO
 
 from scaffold_compiler.interactive_configuration import (
     ConfigurationInitializationError,
+    build_builtin_recipe_questionnaire_registry,
     write_interactive_configuration,
 )
 from scaffold_compiler.project_recipe_registry import build_builtin_project_recipe_registry
-from scaffold_compiler.recipe_project_configuration import build_builtin_answer_normalizers
+from scaffold_compiler.recipe_project_configuration import (
+    JSONValue,
+    build_builtin_answer_normalizers,
+)
+from scaffold_compiler.trusted_recipe_registration import build_recipe_questionnaire_registry
 
 
 class InteractiveConfigurationTests(unittest.TestCase):
@@ -22,6 +29,7 @@ class InteractiveConfigurationTests(unittest.TestCase):
             input_stream=io.StringIO(responses),
             output_stream=io.StringIO(),
             recipe_registry=build_builtin_project_recipe_registry(),
+            questionnaire_registry=build_builtin_recipe_questionnaire_registry(),
             answer_normalizers=build_builtin_answer_normalizers(),
             working_directory=root,
             home_directory=root / "home",
@@ -58,6 +66,7 @@ class InteractiveConfigurationTests(unittest.TestCase):
                 input_stream=io.StringIO("invalid\n2\nTiny Tool\ntiny-tool\n\n\n"),
                 output_stream=transcript,
                 recipe_registry=build_builtin_project_recipe_registry(),
+                questionnaire_registry=build_builtin_recipe_questionnaire_registry(),
                 answer_normalizers=build_builtin_answer_normalizers(),
                 working_directory=root,
                 home_directory=root / "home",
@@ -93,6 +102,52 @@ class InteractiveConfigurationTests(unittest.TestCase):
             self.assertEqual(
                 payload["answers"],
                 {"binary_name": "example-tool", "module_path": "example.com/example-tool"},
+            )
+
+    def test_injected_questionnaire_collector_is_the_only_collector_invoked(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            registry = build_builtin_recipe_questionnaire_registry()
+            go_questionnaire = registry.registrations[2]
+            selected = False
+
+            def collect_go_answers(
+                _source: TextIO,
+                _sink: TextIO,
+            ) -> dict[str, JSONValue]:
+                nonlocal selected
+                selected = True
+                return {
+                    "binary_name": "registered-tool",
+                    "module_path": "example.com/registered-tool",
+                }
+
+            questionnaire_registry = build_recipe_questionnaire_registry(
+                (
+                    *registry.registrations[:2],
+                    replace(go_questionnaire, collector=collect_go_answers),
+                )
+            )
+            path = root / "project.json"
+
+            write_interactive_configuration(
+                path,
+                input_stream=io.StringIO("3\nRegistered Tool\ndelivery\n"),
+                output_stream=io.StringIO(),
+                recipe_registry=build_builtin_project_recipe_registry(),
+                questionnaire_registry=questionnaire_registry,
+                answer_normalizers=build_builtin_answer_normalizers(),
+                working_directory=root,
+                home_directory=root / "home",
+            )
+
+            self.assertTrue(selected)
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8"))["answers"],
+                {
+                    "binary_name": "registered-tool",
+                    "module_path": "example.com/registered-tool",
+                },
             )
 
     def test_end_of_input_creates_no_configuration_or_temporary_file(self) -> None:

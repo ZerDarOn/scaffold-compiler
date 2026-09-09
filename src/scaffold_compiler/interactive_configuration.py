@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import TextIO, TypeVar
 
@@ -20,13 +20,17 @@ from scaffold_compiler.recipe_project_configuration import (
     JSONValue,
     parse_recipe_project_configuration,
 )
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeQuestionnaireRegistration,
+    RecipeQuestionnaireRegistry,
+    build_recipe_questionnaire_registry,
+)
 
 
 class ConfigurationInitializationError(ValueError):
     """A value-free initialization failure safe to handle at the CLI boundary."""
 
 
-AnswerCollector = Callable[[TextIO, TextIO], dict[str, JSONValue]]
 Choice = TypeVar("Choice")
 
 
@@ -42,11 +46,28 @@ def _collect_go_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
     return _go_answers(source, sink)
 
 
-_QUESTIONNAIRES: tuple[tuple[str, str, AnswerCollector], ...] = (
-    (FASTAPI_RECIPE_ID, "Python FastAPI service", _collect_fastapi_answers),
-    (CMAKE_RECIPE_ID, "C11/CMake command-line project", _collect_cmake_answers),
-    (GO_RECIPE_ID, "Go command-line project", _collect_go_answers),
+_QUESTIONNAIRES: tuple[RecipeQuestionnaireRegistration, ...] = (
+    RecipeQuestionnaireRegistration(
+        FASTAPI_RECIPE_ID,
+        "Python FastAPI service",
+        _collect_fastapi_answers,
+    ),
+    RecipeQuestionnaireRegistration(
+        CMAKE_RECIPE_ID,
+        "C11/CMake command-line project",
+        _collect_cmake_answers,
+    ),
+    RecipeQuestionnaireRegistration(
+        GO_RECIPE_ID,
+        "Go command-line project",
+        _collect_go_answers,
+    ),
 )
+
+
+def build_builtin_recipe_questionnaire_registry() -> RecipeQuestionnaireRegistry:
+    """Return the trusted questionnaires shipped with this compiler version."""
+    return build_recipe_questionnaire_registry(_QUESTIONNAIRES)
 
 
 def write_interactive_configuration(
@@ -55,42 +76,38 @@ def write_interactive_configuration(
     input_stream: TextIO,
     output_stream: TextIO,
     recipe_registry: ProjectRecipeRegistry,
+    questionnaire_registry: RecipeQuestionnaireRegistry,
     answer_normalizers: Mapping[str, AnswerNormalizer],
     working_directory: Path,
     home_directory: Path,
 ) -> Path:
     """Ask trusted questions and atomically create one canonical schema-2 config."""
     try:
-        available = tuple(
-            questionnaire
-            for questionnaire in _QUESTIONNAIRES
-            if _recipe_is_registered(recipe_registry, questionnaire[0])
-        )
+        available = questionnaire_registry.for_recipes(recipe_registry)
         if not available:
             raise ConfigurationInitializationError("No interactive recipe is available.")
 
         output_stream.write("Available project recipes:\n")
-        for index, (recipe_id, label, _collector) in enumerate(available, start=1):
-            output_stream.write(f"  {index}. {label} ({recipe_id})\n")
+        for index, questionnaire in enumerate(available, start=1):
+            output_stream.write(f"  {index}. {questionnaire.label} ({questionnaire.recipe_id})\n")
         selection = _ask_choice(
             "Recipe number or id: ",
             choices={str(index): item for index, item in enumerate(available, start=1)}
-            | {item[0]: item for item in available},
+            | {item.recipe_id: item for item in available},
             input_stream=input_stream,
             output_stream=output_stream,
         )
-        recipe_id, _label, collect_answers = selection
         project_name = _ask_required(
             "Project name: ", input_stream=input_stream, output_stream=output_stream
         )
         target_directory = _ask_required(
             "Target directory: ", input_stream=input_stream, output_stream=output_stream
         )
-        answers = collect_answers(input_stream, output_stream)
+        answers = selection.collector(input_stream, output_stream)
         raw_configuration: dict[str, object] = {
             "answers": answers,
             "project_name": project_name,
-            "recipe": recipe_id,
+            "recipe": selection.recipe_id,
             "schema_version": 2,
             "target_directory": target_directory,
         }
@@ -210,14 +227,6 @@ def _read_answer(prompt: str, *, input_stream: TextIO, output_stream: TextIO) ->
     if value == "":
         raise EOFError("Interactive input ended.")
     return value.strip()
-
-
-def _recipe_is_registered(registry: ProjectRecipeRegistry, recipe_id: str) -> bool:
-    try:
-        registry.get(recipe_id)
-    except ValueError:
-        return False
-    return True
 
 
 def _publish_without_overwrite(

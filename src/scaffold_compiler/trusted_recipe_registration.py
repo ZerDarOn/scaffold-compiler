@@ -49,6 +49,22 @@ class TrustedRecipeRegistrationError(RuntimeError):
         super().__init__(message)
 
 
+class RecipeQuestionnaireRegistryError(ValueError):
+    """A value-free questionnaire registration error."""
+
+    def __init__(self, *, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
+class RecipeRuntimeFactoryRegistryError(RuntimeError):
+    """A value-free error raised at the runtime-factory boundary."""
+
+    def __init__(self, *, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
 @dataclass(frozen=True, slots=True)
 class RecipeQuestionnaireRegistration:
     """One trusted interactive questionnaire bound to a recipe identity."""
@@ -64,6 +80,82 @@ class RecipeRuntimeFactoryRegistration:
 
     recipe_id: str
     factory: RecipeRuntimeFactory
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeQuestionnaireRegistry:
+    """Immutable questionnaires with exact recipe-set validation."""
+
+    registrations: tuple[RecipeQuestionnaireRegistration, ...]
+
+    def for_recipes(
+        self,
+        recipe_registry: ProjectRecipeRegistry,
+    ) -> tuple[RecipeQuestionnaireRegistration, ...]:
+        """Return questionnaires in recipe order or reject an incomplete set."""
+        by_recipe = {registration.recipe_id: registration for registration in self.registrations}
+        recipe_ids = tuple(recipe.recipe_id for recipe in recipe_registry.recipes)
+        if len(by_recipe) != len(self.registrations) or set(by_recipe) != set(recipe_ids):
+            raise RecipeQuestionnaireRegistryError(
+                code="questionnaire_recipe_set_mismatch",
+                message="Questionnaire registrations do not match project recipes.",
+            )
+        return tuple(by_recipe[recipe_id] for recipe_id in recipe_ids)
+
+
+@dataclass(frozen=True, slots=True)
+class RecipeRuntimeFactoryRegistry:
+    """Immutable recipe-to-runtime-factory bindings."""
+
+    registrations: tuple[RecipeRuntimeFactoryRegistration, ...]
+
+    def create(
+        self,
+        configuration: RecipeProjectConfiguration,
+        recipe: ProjectRecipe,
+        run_id: str,
+    ) -> object:
+        """Create runtime context only after validating the recipe identity."""
+        if (configuration.recipe_id, configuration.recipe_version) != (
+            recipe.recipe_id,
+            recipe.version,
+        ):
+            raise RecipeRuntimeFactoryRegistryError(
+                code="runtime_request_recipe_mismatch",
+                message="Runtime configuration and recipe identities do not match.",
+            )
+        factory = self._get(recipe.recipe_id)
+        LOGGER.info(
+            "recipe_runtime_factory_started run_id=%s recipe_id=%s recipe_version=%s",
+            run_id,
+            recipe.recipe_id,
+            recipe.version,
+        )
+        try:
+            runtime = factory(configuration, recipe, run_id)
+        except Exception as error:
+            LOGGER.error(
+                "recipe_runtime_factory_failed run_id=%s recipe_id=%s error_type=%s",
+                run_id,
+                recipe.recipe_id,
+                type(error).__name__,
+            )
+            raise
+        LOGGER.info(
+            "recipe_runtime_factory_completed run_id=%s recipe_id=%s",
+            run_id,
+            recipe.recipe_id,
+        )
+        return runtime
+
+    def _get(self, recipe_id: str) -> RecipeRuntimeFactory:
+        for registration in self.registrations:
+            if registration.recipe_id == recipe_id:
+                return registration.factory
+        raise RecipeRuntimeFactoryRegistryError(
+            code="unknown_runtime_factory",
+            message="Recipe runtime factory is not registered.",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,10 +178,10 @@ class CompiledTrustedRecipeRegistrations:
 
     recipe_registry: ProjectRecipeRegistry
     answer_normalizers: Mapping[str, AnswerNormalizer]
-    questionnaires: tuple[RecipeQuestionnaireRegistration, ...]
+    questionnaire_registry: RecipeQuestionnaireRegistry
     assembly_registry: ProjectAssemblyAdapterRegistry
     validation_registry: ProjectValidationAdapterRegistry
-    runtime_factories: tuple[RecipeRuntimeFactoryRegistration, ...]
+    runtime_factory_registry: RecipeRuntimeFactoryRegistry
 
 
 def compile_trusted_recipe_registrations(
@@ -107,6 +199,8 @@ def compile_trusted_recipe_registrations(
         ProjectAssemblyAdapterRegistryError,
         ProjectRecipeRegistryError,
         ProjectValidationAdapterRegistryError,
+        RecipeQuestionnaireRegistryError,
+        RecipeRuntimeFactoryRegistryError,
     ) as error:
         code = error.code
         LOGGER.error("trusted_recipe_registration_compile_failed code=%s", code)
@@ -158,14 +252,69 @@ def _compile_trusted_recipe_registrations(
     validation_registry = build_project_validation_adapter_registry(
         registration.validation_adapter for registration in registrations
     )
+    questionnaire_registry = build_recipe_questionnaire_registry(
+        registration.questionnaire for registration in registrations
+    )
+    questionnaire_registry.for_recipes(recipe_registry)
+    runtime_factory_registry = build_recipe_runtime_factory_registry(
+        registration.runtime_factory for registration in registrations
+    )
     return CompiledTrustedRecipeRegistrations(
         recipe_registry=recipe_registry,
         answer_normalizers=MappingProxyType(answer_normalizers),
-        questionnaires=tuple(registration.questionnaire for registration in registrations),
+        questionnaire_registry=questionnaire_registry,
         assembly_registry=assembly_registry,
         validation_registry=validation_registry,
-        runtime_factories=tuple(registration.runtime_factory for registration in registrations),
+        runtime_factory_registry=runtime_factory_registry,
     )
+
+
+def build_recipe_questionnaire_registry(
+    registrations: Iterable[RecipeQuestionnaireRegistration],
+) -> RecipeQuestionnaireRegistry:
+    """Build a questionnaire registry while rejecting invalid or duplicate recipes."""
+    frozen: list[RecipeQuestionnaireRegistration] = []
+    recipe_ids: set[str] = set()
+    for registration in registrations:
+        if (
+            not registration.recipe_id
+            or not registration.label.strip()
+            or not callable(registration.collector)
+        ):
+            raise RecipeQuestionnaireRegistryError(
+                code="invalid_questionnaire",
+                message="Recipe questionnaire registration is invalid.",
+            )
+        if registration.recipe_id in recipe_ids:
+            raise RecipeQuestionnaireRegistryError(
+                code="duplicate_questionnaire_recipe",
+                message="Recipe questionnaires must have unique recipe identifiers.",
+            )
+        recipe_ids.add(registration.recipe_id)
+        frozen.append(registration)
+    return RecipeQuestionnaireRegistry(tuple(frozen))
+
+
+def build_recipe_runtime_factory_registry(
+    registrations: Iterable[RecipeRuntimeFactoryRegistration],
+) -> RecipeRuntimeFactoryRegistry:
+    """Build a runtime registry while rejecting invalid or duplicate recipes."""
+    frozen: list[RecipeRuntimeFactoryRegistration] = []
+    recipe_ids: set[str] = set()
+    for registration in registrations:
+        if not registration.recipe_id or not callable(registration.factory):
+            raise RecipeRuntimeFactoryRegistryError(
+                code="invalid_runtime_factory",
+                message="Recipe runtime factory registration is invalid.",
+            )
+        if registration.recipe_id in recipe_ids:
+            raise RecipeRuntimeFactoryRegistryError(
+                code="duplicate_runtime_factory_recipe",
+                message="Runtime factories must have unique recipe identifiers.",
+            )
+        recipe_ids.add(registration.recipe_id)
+        frozen.append(registration)
+    return RecipeRuntimeFactoryRegistry(tuple(frozen))
 
 
 def _validate_executable_components(registration: TrustedRecipeRegistration) -> None:

@@ -24,6 +24,9 @@ from scaffold_compiler.go_project_validation_adapter import (
     GoValidationRuntime,
     build_go_project_validation_adapter_registration,
 )
+from scaffold_compiler.interactive_configuration import (
+    build_builtin_recipe_questionnaire_registry,
+)
 from scaffold_compiler.project_assembly_adapter_registry import (
     build_project_assembly_adapter_registry,
 )
@@ -41,6 +44,10 @@ from scaffold_compiler.project_validation_adapter_registry import (
 from scaffold_compiler.recipe_project_configuration import (
     RecipeProjectConfiguration,
     build_builtin_answer_normalizers,
+)
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeRuntimeFactoryRegistration,
+    build_recipe_runtime_factory_registry,
 )
 from scaffold_compiler.v1_project_compiler import (
     build_fastapi_project_assembly_adapter_registry,
@@ -68,32 +75,46 @@ def build_builtin_project_command_application(
     cmake_assembly_registry = build_cmake_project_assembly_adapter_registry()
     go_assembly_registry = build_go_project_assembly_adapter_registry()
 
-    def validation_runtime_factory(
+    def go_runtime_factory(
         configuration: RecipeProjectConfiguration,
         recipe: ProjectRecipe,
         run_id: str,
     ) -> object:
+        del recipe, run_id
         answers = configuration.answers
-        if recipe.recipe_id == GO_RECIPE_ID:
-            binary_name = answers.get("binary_name")
-            if not isinstance(binary_name, str):
-                raise ValueError("Go runtime answers are invalid.")
-            return GoValidationRuntime(
-                binary_name=binary_name,
-                go_executable=go_executable,
-                gofmt_executable=gofmt_executable,
-            )
-        if recipe.recipe_id == CMAKE_RECIPE_ID:
-            target_name = answers.get("target_name")
-            if not isinstance(target_name, str):
-                raise ValueError("CMake runtime answers are invalid.")
-            return CMakeValidationRuntime(
-                target_name=target_name,
-                cmake_executable=cmake_executable,
-                ctest_executable=ctest_executable,
-            )
-        if recipe.recipe_id != FASTAPI_RECIPE_ID or uv_executable is None:
+        binary_name = answers.get("binary_name")
+        if not isinstance(binary_name, str):
+            raise ValueError("Go runtime answers are invalid.")
+        return GoValidationRuntime(
+            binary_name=binary_name,
+            go_executable=go_executable,
+            gofmt_executable=gofmt_executable,
+        )
+
+    def cmake_runtime_factory(
+        configuration: RecipeProjectConfiguration,
+        recipe: ProjectRecipe,
+        run_id: str,
+    ) -> object:
+        del recipe, run_id
+        target_name = configuration.answers.get("target_name")
+        if not isinstance(target_name, str):
+            raise ValueError("CMake runtime answers are invalid.")
+        return CMakeValidationRuntime(
+            target_name=target_name,
+            cmake_executable=cmake_executable,
+            ctest_executable=ctest_executable,
+        )
+
+    def fastapi_runtime_factory(
+        configuration: RecipeProjectConfiguration,
+        recipe: ProjectRecipe,
+        run_id: str,
+    ) -> object:
+        del recipe
+        if uv_executable is None:
             raise ValueError("Required recipe validation runtime is unavailable.")
+        answers = configuration.answers
         package_name = answers.get("package_name")
         database = answers.get("database")
         if not isinstance(package_name, str) or database not in {"none", "postgres"}:
@@ -118,6 +139,7 @@ def build_builtin_project_command_application(
         working_directory=working_directory,
         home_directory=home_directory,
         recipe_registry=recipe_registry,
+        questionnaire_registry=build_builtin_recipe_questionnaire_registry(),
         answer_normalizers=build_builtin_answer_normalizers(),
         assembly_registry=build_project_assembly_adapter_registry(
             (
@@ -133,5 +155,11 @@ def build_builtin_project_command_application(
                 build_go_project_validation_adapter_registration(),
             )
         ),
-        validation_runtime_factory=validation_runtime_factory,
+        runtime_factory_registry=build_recipe_runtime_factory_registry(
+            (
+                RecipeRuntimeFactoryRegistration(FASTAPI_RECIPE_ID, fastapi_runtime_factory),
+                RecipeRuntimeFactoryRegistration(CMAKE_RECIPE_ID, cmake_runtime_factory),
+                RecipeRuntimeFactoryRegistration(GO_RECIPE_ID, go_runtime_factory),
+            )
+        ),
     )
