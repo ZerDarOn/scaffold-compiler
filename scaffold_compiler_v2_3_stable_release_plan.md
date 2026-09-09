@@ -112,7 +112,7 @@ Can parallelize : 公开状态与差异只读检查可并行；所有写入、�
 
 ## 6. 状态
 
-- Done：Tasks 1.1、1.2、2.1、2.2。公开 Issue/PR 均为零；RC1 后只有发布证据文档提交，无运行
+- Done：Tasks 1.1–4.1。公开 Issue/PR 均为零；RC1 后只有发布证据文档提交，无运行
   代码漂移；RC1 标签与最终主分支质量门全部成功，公开下载资产摘要和真实生命周期验收通过。
   包、测试、Go 验收身份、README 和构建示例已经统一为 `2.3.0`。
 - Tests：141 个文件格式检查、lint、121 个源文件严格 mypy 全部通过；全量测试为
@@ -124,9 +124,18 @@ Can parallelize : 公开状态与差异只读检查可并行；所有写入、�
   均与实际 ZIP 匹配；清单版本为 `2.3.0`，胶囊 ID 为
   `3de44242-6ec8-4f15-96b6-0acaf13d5606`，临时构建目录已删除。
 - CI：精确稳定准备提交 `3b43c7a` 的 quality `34335364517` 已在 Windows、Ubuntu 和
-  Linux 四种真实发布组合全部成功。稳定标签必须精确指向该提交。
+  Linux 四种真实发布组合全部成功。不可变稳定标签精确指向该提交。标签工作流
+  `34379349679` 的跨平台质量、Linux 四种真实组合、版本化胶囊构建和 GitHub Release 发布
+  也全部成功。
+- Release：`v2.3.0` 已作为非 prerelease 稳定版发布：
+  <https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0>。公开 ZIP SHA-256 为
+  `79b4a0f407be16e21fe23a2cc8e05a5a1bb052363e75e93533a047b5aba2da1e`，与本地两次
+  确定性构建一致；公开清单版本和胶囊 ID 均匹配。
+- Asset audit：从 GitHub Release 独立下载 ZIP 与摘要后校验通过；公开胶囊在 Windows 上以
+  89 字符目标目录完成 Go `init`、`preview`、四个验证门和 `FINALIZE`。生成后
+  `go test ./...` 通过，胶囊与清理日志均自删除，`.scw-*` 为零，成品中无 scaffold 命名条目，
+  临时审计目录已删除。
 - Observation：RC1 公开资产当前下载量为零，因此不能声称获得外部用户验证；稳定晋升依据是
   与 V2.1/V2.2 一致的可重复技术门。
-- Next：Task 3.1；取得明确授权后，才可为精确提交 `3b43c7a` 创建并推送不可变 `v2.3.0`
-  注释标签。公共稳定标签尚未创建。
+- Next：提交本发布证据并等待最终主分支 CI；之后 V2.3 进入稳定维护，后续缺陷使用补丁版本。
 - Rollback point：`v2.2.0` 与 `v2.3.0-rc.1` 标签、Release 和资产保持不变。
