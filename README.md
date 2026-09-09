@@ -186,7 +186,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.2.0-dev `
+  --destination .\dist\scaffold-compiler-2.2.0-rc.1 `
   --archive
 ```
 
