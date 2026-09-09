@@ -11,6 +11,19 @@ Status update (2026-09-09): this historical review qualified the V2 architecture
 public release. V2.0.0, V2.1.0, and V2.2.0 have since been published as stable releases after their exact
 release commits, tag workflows, checksums, and downloaded assets passed the required gates.
 
+V2.3 development review (2026-09-09): the trusted recipe registration work on `main` has no
+unresolved high, medium, or low finding. FastAPI, CMake, and Go each expose one complete registration
+unit; the composition root atomically compiles those units into recipe, answer, questionnaire,
+assembly, validation, and runtime registries. Interactive initialization and runtime creation no
+longer contain language dispatch branches. This remains an internal trusted-code extension model,
+not a runtime plugin or manifest execution mechanism.
+
+The V2.3 gate passed formatting and lint for 121 Python files, strict mypy for 121 source files, and
+325 tests with 275 subtests. Four local skips are bounded to unavailable Docker/CMake tooling and
+POSIX-only symlink semantics; the exact Phase 3 commit then passed Windows core, Ubuntu core, and
+Linux real-release GitHub jobs. A transient Windows process-spawn failure was reproduced as
+nonpersistent: the affected PostgreSQL capsule test and the following complete suite both passed.
+
 ## Outcome
 
 No unresolved critical, high, or medium finding remains. V2 is suitable for a release-candidate
@@ -63,6 +76,7 @@ invariant.
 | Compatibility | Pass | Legacy schema 1 maps to the FastAPI recipe; four V1/V2 configurations produce identical final bytes and cleanup behavior |
 | Cross-platform evidence | Pass | Managed Ubuntu and Windows execute core quality plus real CMake configure/build/CTest/run; Linux executes four real FastAPI release combinations |
 | Documentation | Pass | User and trusted-recipe-author guides are contract-tested against recipe IDs, commands, confirmations, and trust boundaries |
+| Recipe registration | Pass | Complete built-in units compile atomically; duplicate, incomplete, mismatched, unknown, or wrong-identity dispatch fails before recipe execution |
 
 ## Residual low-risk debt
 
@@ -72,6 +86,9 @@ invariant.
 - `V1CommandApplication` remains as a compatibility wrapper beside the generic application. It is
   covered by equivalence tests and should be removed only in a separately versioned compatibility
   decision, not during the V2 release-candidate change.
+- Third-party recipe distribution, signatures, sandboxing, and runtime plugin loading remain
+  explicitly out of scope. They require a separate trust protocol and must not weaken the closed
+  built-in registration boundary.
 - At the review time, the release candidate still needed an explicit version bump, deterministic
   capsule/archive/checksum build, clean-tree verification, and a separately authorized tag/GitHub
   Release action. Those gates were subsequently completed for V2.0.0, V2.1.0, and V2.2.0.

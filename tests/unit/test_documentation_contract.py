@@ -47,6 +47,9 @@ class DocumentationContractTests(unittest.TestCase):
             "allowed_validations",
             "assembly adapter",
             "validation adapter",
+            "TrustedRecipeRegistration",
+            "compile_trusted_recipe_registrations",
+            "not a runtime plugin API",
             "cannot execute",
             "docs/trusted_recipe_authoring.md",
         ):

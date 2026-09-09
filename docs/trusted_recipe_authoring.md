@@ -21,9 +21,52 @@ A recipe owns only its answer contract, capability mapping, allowed blueprints, 
 validation adapter, gates, and prerequisites. It must not fork the transaction, lock, state machine,
 Finalize, failure recovery, or self-cleanup implementation.
 
+## One complete registration unit
+
+Every built-in project family has one `*_trusted_recipe_registration.py` module. Its builder returns
+exactly one `TrustedRecipeRegistration` containing all six recipe-owned components:
+
+1. the strict declarative recipe;
+2. the authoritative answer normalizer;
+3. the interactive questionnaire;
+4. the candidate assembly adapter;
+5. the validation adapter and its fixed reportable gates;
+6. the runtime-context factory for controlled tools and runtime-only inputs.
+
+Add the completed builder to `builtin_trusted_recipe_registrations.py`. Do not separately edit the
+application composition root. `compile_trusted_recipe_registrations` validates every cross-component
+identity and key, rejects duplicate or incomplete bindings, and only then exposes the recipe,
+answer, questionnaire, assembly, validation, and runtime registries as one immutable result. The
+compiler does not invoke any registered callable while compiling the set.
+
+Use the existing FastAPI, CMake, and Go registration modules as executable examples. The intended
+shape is:
+
+```python
+def build_example_trusted_recipe_registration(...) -> TrustedRecipeRegistration:
+    return TrustedRecipeRegistration(
+        declaration=build_example_project_recipe_declaration(),
+        answer_parser_key=EXAMPLE_ANSWER_PARSER_KEY,
+        answer_normalizer=normalize_example_recipe_answers,
+        questionnaire=build_example_recipe_questionnaire_registration(),
+        assembly_adapter_key=EXAMPLE_ASSEMBLY_ADAPTER_KEY,
+        assembly_adapter=assemble_example_project_candidate,
+        validation_adapter=build_example_validation_adapter_registration(),
+        runtime_factory=RecipeRuntimeFactoryRegistration(
+            EXAMPLE_RECIPE_ID,
+            create_example_validation_runtime,
+        ),
+    )
+```
+
+This is an internal registration contract, not a runtime plugin API. Do not load entry points,
+module paths, commands, hooks, signatures, or download locations from project configuration or
+blueprint manifests. External recipe distribution and trust require a separate signed protocol and
+are outside this architecture.
+
 ## Recipe declaration
 
-Declarations are currently compiled into `project_recipe_registry.py`. Every declaration uses
+Each registration supplies one defensive recipe declaration. Every declaration uses
 `schema_version` 1 and exactly these fields:
 
 ```json
@@ -89,7 +132,7 @@ silently sharing language-specific assumptions.
 
 ## Trusted adapters
 
-Adding a recipe requires three deliberate runtime registrations:
+The complete registration unit binds these trusted executable components:
 
 - An answer normalizer validates the recipe's complete answer object, rejects unknown fields, applies
   deterministic defaults, and returns JSON-only canonical values.
@@ -99,9 +142,15 @@ Adding a recipe requires three deliberate runtime registrations:
   uses argument arrays, absolute discovered executables, timeouts, output limits, secret redaction,
   and the run-owned validation directory.
 
-Register the keys in the built-in composition root. Do not add dynamic imports, entry points,
-manifest-provided commands, arbitrary environment forwarding, or network installation hooks. Tool
-installation is a user prerequisite; validation does not bootstrap a machine.
+The runtime factory creates only the selected recipe's opaque validation context after the compiler
+has verified the configuration and recipe identity. Capture only explicitly required tool paths or
+environment values; never retain an entire environment mapping. Validation adapter gates must cover
+every gate allowed by the recipe. They may additionally report fixed internal safety or cleanup
+gates that users and manifests cannot request.
+
+Do not add dynamic imports, entry points, manifest-provided commands, arbitrary environment
+forwarding, or network installation hooks. Tool installation is a user prerequisite; validation
+does not bootstrap a machine.
 
 To expose the recipe through `init`, also register a fourth trusted-code component: a questionnaire
 that collects JSON-only candidate answers. Questionnaire definitions must not come from blueprint
@@ -118,6 +167,10 @@ Before a recipe can ship, add:
 - questionnaire tests for defaults, invalid-choice retry, interrupted input, strict parser reuse,
   and no-overwrite configuration publication;
 - registry tests for trusted keys and recipe scope;
+- complete-registration tests for missing callables, duplicate bindings, cross-component identity
+  mismatches, validation-gate coverage, and zero callable execution during compilation;
+- runtime-factory tests proving identity mismatch and unknown recipes fail before dispatch and only
+  the selected factory receives the configuration, recipe, and run ID;
 - planner tests for cross-recipe dependencies, conflicts, cycles, duplicate providers, and duplicate
   output ownership;
 - golden-project tests for the complete tree, exact important bytes, and absence of unselected
@@ -143,6 +196,8 @@ Run the repository gates before review:
 - The recipe has a narrow purpose and explicit prerequisites.
 - Defaults are deterministic and all unknown configuration fields fail closed.
 - Every blueprint, capability, gate, file, and adapter is allowlisted.
+- One complete registration unit compiles atomically; no component is separately wired in the
+  application composition root.
 - Generated bytes contain no absolute source, workspace, capsule, secret, or generator paths.
 - The validation adapter cannot execute user- or manifest-supplied commands.
 - The target is written only by the shared no-replace publication step.

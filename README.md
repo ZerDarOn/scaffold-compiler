@@ -7,6 +7,7 @@ project contains no generator, blueprint, journal, or run metadata.
 
 Latest stable release: [`v2.2.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.2.0).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
+The `main` branch currently identifies itself as the unreleased `2.3.0-dev` line.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
@@ -28,7 +29,9 @@ The detailed architecture, guarantees, and remaining acceptance work are in
 [`scaffold_compiler_implementation_plan.md`](scaffold_compiler_implementation_plan.md).
 For practical operation, see the [`docs/user_guide.md`](docs/user_guide.md). Maintainers adding a
 language or project family should follow
-[`docs/trusted_recipe_authoring.md`](docs/trusted_recipe_authoring.md).
+[`docs/trusted_recipe_authoring.md`](docs/trusted_recipe_authoring.md). Each built-in language owns
+one complete trusted registration unit; the compiler atomically derives every runtime registry from
+the collected units and refuses incomplete or mismatched wiring before generation can start.
 
 ## Prerequisites
 
@@ -186,7 +189,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.2.0 `
+  --destination .\dist\scaffold-compiler-2.3.0-dev `
   --archive
 ```
 
