@@ -98,4 +98,5 @@ invariant.
 The gate required a chosen version and explicit authorization for public release side effects:
 build assets first, rerun the full local gates, require all GitHub Actions jobs to pass for the
 exact release commit, then tag and publish without modifying generated assets. The published stable
-releases followed this sequence.
+releases followed this sequence. V2.3.0-rc.1 subsequently passed the same exact-commit gate and a
+fresh public-download lifecycle audit while remaining explicitly marked as a prerelease.

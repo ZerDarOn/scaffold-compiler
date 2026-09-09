@@ -132,10 +132,11 @@ Can parallelize : 公开状态与差异审查可并行读取；所有写入、�
 
 ## 7. 状态
 
-- Done：Tasks 1.1、1.2、2.2、2.3；公开 Issue/PR 为零，最新稳定版为 `v2.2.0`。包、测试、
-  Go 胶囊验收身份和 README 已统一为 `2.3.0-rc.1`，冻结差异只有身份与文档。两次隔离构建
-  ZIP 摘要均为 `18f62e338888741d9e2b43380141efd93a522848742e81a975e89da40adaffdd`，
-  两个摘要文件与清单身份均匹配，临时构建目录已删除。
+- Done：Tasks 1.1–4.1。公开 Issue/PR 为零，最新稳定版为 `v2.2.0`。包、测试、Go 胶囊
+  验收身份和 README 已统一为 `2.3.0-rc.1`，冻结差异只有身份与文档。两次隔离构建以及
+  公开下载 ZIP 的摘要均为
+  `18f62e338888741d9e2b43380141efd93a522848742e81a975e89da40adaffdd`；摘要文件与清单
+  身份均匹配，所有临时构建和审计目录已删除。
 - Tests：121 个 Python 文件格式/lint、121 个文件严格 mypy 通过。完整套件两次均为
   324 passed/4 skipped，唯一失败分别是 Windows 应用控制以 `os error 4551` 间歇阻止
   临时验证环境启动 `mypy`，以及同一宿主随后阻止 Go 工具链子进程；M-01 单独复跑通过，
@@ -143,7 +144,13 @@ Can parallelize : 公开状态与差异审查可并行读取；所有写入、�
 - Review：无版本冻结代码发现；本地 Windows 应用控制是明确的环境残余风险，不能通过修改
   产品代码或降低门禁绕过。精确冻结提交 `6a7de7a` 的 quality `34331781722` 已在远端
   Windows、Ubuntu 和 Linux 四种真实发布组合全部成功，满足平台资格门。
-- Next：Task 3.1；取得明确授权后，才可为精确提交 `6a7de7a` 创建并推送不可变
-  `v2.3.0-rc.1` 注释标签。公开标签尚未创建。
+- Release：不可变注释标签 `v2.3.0-rc.1` 指向冻结提交 `6a7de7a`。标签工作流
+  `34332578734` 的 Windows、Ubuntu、Linux 四种真实组合、版本化胶囊构建和 GitHub
+  prerelease 发布全部成功。公开候选位于
+  <https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1>。
+- Public audit：从 GitHub Release 独立下载 ZIP 和 `.sha256` 后摘要匹配。公开胶囊在 Windows
+  上以 89 字符目标目录完成 Go `init`、`preview`、四个验证门和 `FINALIZE`；生成项目
+  `go test ./...` 通过，胶囊与清理日志均自删除，`.scw-*` 为零，成品中无 scaffold 命名条目。
+- Next：只需本证据提交的最终主分支 CI；候选观察期内如发现缺陷，进入 `rc.2`，不移动标签。
 - Debt：第三方插件、签名和沙箱协议不进入 RC1。
 - Rollback point：`v2.2.0` 标签、Release 和已验证公开资产保持不变。

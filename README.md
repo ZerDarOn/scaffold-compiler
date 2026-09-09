@@ -7,7 +7,9 @@ project contains no generator, blueprint, journal, or run metadata.
 
 Latest stable release: [`v2.2.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.2.0).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
-The `main` branch currently identifies itself as the unpublished `2.3.0-rc.1` candidate.
+Latest candidate release:
+[`v2.3.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1).
+The candidate is a prerelease; `v2.2.0` remains the stable rollback point.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
