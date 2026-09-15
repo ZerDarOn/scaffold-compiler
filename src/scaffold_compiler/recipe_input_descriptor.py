@@ -44,6 +44,7 @@ class RecipeInputDescriptor:
     omission: RecipeInputOmission
     choices: tuple[str, ...] = ()
     literal_default: bool | str | None = None
+    interactive_hint: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.key, str) or not _INPUT_KEY_PATTERN.fullmatch(self.key):
@@ -59,6 +60,15 @@ class RecipeInputDescriptor:
             _raise_descriptor_error("invalid_input_type")
         if not isinstance(self.omission, RecipeInputOmission):
             _raise_descriptor_error("invalid_input_omission")
+        if self.interactive_hint is not None and (
+            not isinstance(self.interactive_hint, str)
+            or not self.interactive_hint
+            or self.interactive_hint != self.interactive_hint.strip()
+            or any(
+                ord(character) < 32 or ord(character) == 127 for character in self.interactive_hint
+            )
+        ):
+            _raise_descriptor_error("invalid_input_hint")
         self._validate_choices()
         self._validate_default()
 
@@ -74,6 +84,7 @@ class RecipeInputDescriptor:
             "interactive_default": (
                 self.literal_default if self.omission is RecipeInputOmission.LITERAL else None
             ),
+            "interactive_hint": self.interactive_hint,
             "key": self.key,
             "label": self.label,
             "omission": self.omission.value,
@@ -98,7 +109,7 @@ class RecipeInputDescriptor:
             )
         ):
             _raise_descriptor_error("invalid_input_choices")
-        if len(set(self.choices)) != len(self.choices):
+        if len({choice.lower() for choice in self.choices}) != len(self.choices):
             _raise_descriptor_error("duplicate_input_choices")
 
     def _validate_default(self) -> None:

@@ -6,6 +6,7 @@ import json
 import os
 import tempfile
 from collections.abc import Mapping
+from functools import partial
 from pathlib import Path
 from typing import TextIO, TypeVar
 
@@ -39,95 +40,101 @@ class ConfigurationInitializationError(ValueError):
 Choice = TypeVar("Choice")
 
 
-def _collect_fastapi_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
-    return _fastapi_answers(source, sink)
-
-
-def _collect_cmake_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
-    return _cmake_answers(source, sink)
-
-
-def _collect_go_answers(source: TextIO, sink: TextIO) -> dict[str, JSONValue]:
-    return _go_answers(source, sink)
-
-
 def build_fastapi_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
     """Return the trusted FastAPI questionnaire registration."""
-    return RecipeQuestionnaireRegistration(
+    inputs = (
+        RecipeInputDescriptor(
+            "package_name",
+            "Python package name",
+            RecipeInputType.STRING,
+            RecipeInputOmission.OMIT,
+            interactive_hint="derived from project name",
+        ),
+        RecipeInputDescriptor(
+            "database",
+            "Database",
+            RecipeInputType.CHOICE,
+            RecipeInputOmission.LITERAL,
+            choices=("none", "postgres"),
+            literal_default="none",
+        ),
+        RecipeInputDescriptor(
+            "delivery",
+            "Delivery",
+            RecipeInputType.CHOICE,
+            RecipeInputOmission.LITERAL,
+            choices=("none", "docker"),
+            literal_default="none",
+        ),
+    )
+    return build_declared_recipe_questionnaire_registration(
         FASTAPI_RECIPE_ID,
         "Python FastAPI service",
-        _collect_fastapi_answers,
-        (
-            RecipeInputDescriptor(
-                "package_name",
-                "Python package name",
-                RecipeInputType.STRING,
-                RecipeInputOmission.OMIT,
-            ),
-            RecipeInputDescriptor(
-                "database",
-                "Database",
-                RecipeInputType.CHOICE,
-                RecipeInputOmission.LITERAL,
-                choices=("none", "postgres"),
-                literal_default="none",
-            ),
-            RecipeInputDescriptor(
-                "delivery",
-                "Delivery",
-                RecipeInputType.CHOICE,
-                RecipeInputOmission.LITERAL,
-                choices=("none", "docker"),
-                literal_default="none",
-            ),
-        ),
+        inputs,
     )
 
 
 def build_cmake_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
     """Return the trusted CMake questionnaire registration."""
-    return RecipeQuestionnaireRegistration(
+    inputs = (
+        RecipeInputDescriptor(
+            "target_name",
+            "CMake target name",
+            RecipeInputType.STRING,
+            RecipeInputOmission.OMIT,
+            interactive_hint="derived from project name",
+        ),
+        RecipeInputDescriptor(
+            "strict_warnings",
+            "Strict compiler warnings",
+            RecipeInputType.BOOLEAN,
+            RecipeInputOmission.LITERAL,
+            literal_default=True,
+        ),
+    )
+    return build_declared_recipe_questionnaire_registration(
         CMAKE_RECIPE_ID,
         "C11/CMake command-line project",
-        _collect_cmake_answers,
-        (
-            RecipeInputDescriptor(
-                "target_name",
-                "CMake target name",
-                RecipeInputType.STRING,
-                RecipeInputOmission.OMIT,
-            ),
-            RecipeInputDescriptor(
-                "strict_warnings",
-                "Strict compiler warnings",
-                RecipeInputType.BOOLEAN,
-                RecipeInputOmission.LITERAL,
-                literal_default=True,
-            ),
-        ),
+        inputs,
     )
 
 
 def build_go_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistration:
     """Return the trusted Go questionnaire registration."""
-    return RecipeQuestionnaireRegistration(
+    inputs = (
+        RecipeInputDescriptor(
+            "binary_name",
+            "Go binary name",
+            RecipeInputType.STRING,
+            RecipeInputOmission.OMIT,
+            interactive_hint="derived from project name",
+        ),
+        RecipeInputDescriptor(
+            "module_path",
+            "Go module path",
+            RecipeInputType.STRING,
+            RecipeInputOmission.OMIT,
+            interactive_hint="example.com/<binary name>",
+        ),
+    )
+    return build_declared_recipe_questionnaire_registration(
         GO_RECIPE_ID,
         "Go command-line project",
-        _collect_go_answers,
-        (
-            RecipeInputDescriptor(
-                "binary_name",
-                "Go binary name",
-                RecipeInputType.STRING,
-                RecipeInputOmission.OMIT,
-            ),
-            RecipeInputDescriptor(
-                "module_path",
-                "Go module path",
-                RecipeInputType.STRING,
-                RecipeInputOmission.OMIT,
-            ),
-        ),
+        inputs,
+    )
+
+
+def build_declared_recipe_questionnaire_registration(
+    recipe_id: str,
+    label: str,
+    inputs: tuple[RecipeInputDescriptor, ...],
+) -> RecipeQuestionnaireRegistration:
+    """Build a questionnaire whose collector is entirely descriptor-driven."""
+    return RecipeQuestionnaireRegistration(
+        recipe_id=recipe_id,
+        label=label,
+        collector=partial(_collect_declared_answers, inputs=inputs),
+        inputs=inputs,
     )
 
 
@@ -205,65 +212,80 @@ def write_interactive_configuration(
         raise ConfigurationInitializationError("Configuration was not created.") from error
 
 
-def _fastapi_answers(input_stream: TextIO, output_stream: TextIO) -> dict[str, JSONValue]:
-    package_name = _ask_optional(
-        "Python package name [derived from project name]: ",
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    database = _ask_choice(
-        "Database [none/postgres] (default none): ",
-        choices={"": "none", "none": "none", "postgres": "postgres"},
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    delivery = _ask_choice(
-        "Delivery [none/docker] (default none): ",
-        choices={"": "none", "none": "none", "docker": "docker"},
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    answers: dict[str, JSONValue] = {"database": database, "delivery": delivery}
-    if package_name:
-        answers["package_name"] = package_name
-    return answers
-
-
-def _cmake_answers(input_stream: TextIO, output_stream: TextIO) -> dict[str, JSONValue]:
-    target_name = _ask_optional(
-        "CMake target name [derived from project name]: ",
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    strict_warnings = _ask_choice(
-        "Strict compiler warnings [Y/n]: ",
-        choices={"": True, "y": True, "yes": True, "n": False, "no": False},
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    answers: dict[str, JSONValue] = {"strict_warnings": strict_warnings}
-    if target_name:
-        answers["target_name"] = target_name
-    return answers
-
-
-def _go_answers(input_stream: TextIO, output_stream: TextIO) -> dict[str, JSONValue]:
-    binary_name = _ask_optional(
-        "Go binary name [derived from project name]: ",
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
-    module_path = _ask_optional(
-        "Go module path [example.com/<binary name>]: ",
-        input_stream=input_stream,
-        output_stream=output_stream,
-    )
+def _collect_declared_answers(
+    input_stream: TextIO,
+    output_stream: TextIO,
+    *,
+    inputs: tuple[RecipeInputDescriptor, ...],
+) -> dict[str, JSONValue]:
     answers: dict[str, JSONValue] = {}
-    if binary_name:
-        answers["binary_name"] = binary_name
-    if module_path:
-        answers["module_path"] = module_path
+    for descriptor in inputs:
+        value = _ask_declared_input(
+            descriptor,
+            input_stream=input_stream,
+            output_stream=output_stream,
+        )
+        if descriptor.omission is RecipeInputOmission.OMIT and value == "":
+            continue
+        answers[descriptor.key] = value
     return answers
+
+
+def _ask_declared_input(
+    descriptor: RecipeInputDescriptor,
+    *,
+    input_stream: TextIO,
+    output_stream: TextIO,
+) -> JSONValue:
+    prompt = _declared_input_prompt(descriptor)
+    if descriptor.input_type is RecipeInputType.STRING:
+        if descriptor.omission is RecipeInputOmission.REJECT:
+            return _ask_required(prompt, input_stream=input_stream, output_stream=output_stream)
+        value = _ask_optional(prompt, input_stream=input_stream, output_stream=output_stream)
+        if value or descriptor.omission is RecipeInputOmission.OMIT:
+            return value
+        return descriptor.literal_default
+
+    choices: dict[str, JSONValue]
+    if descriptor.input_type is RecipeInputType.BOOLEAN:
+        choices = {"y": True, "yes": True, "n": False, "no": False}
+    else:
+        choices = {choice.lower(): choice for choice in descriptor.choices}
+    if descriptor.omission is RecipeInputOmission.LITERAL:
+        choices[""] = descriptor.literal_default
+    elif descriptor.omission is RecipeInputOmission.OMIT:
+        choices[""] = ""
+    return _ask_choice(
+        prompt,
+        choices=choices,
+        input_stream=input_stream,
+        output_stream=output_stream,
+    )
+
+
+def _declared_input_prompt(descriptor: RecipeInputDescriptor) -> str:
+    hint = f" [{descriptor.interactive_hint}]" if descriptor.interactive_hint else ""
+    if descriptor.input_type is RecipeInputType.STRING:
+        default = (
+            f" (default {descriptor.literal_default})"
+            if descriptor.omission is RecipeInputOmission.LITERAL
+            else ""
+        )
+        return f"{descriptor.label}{hint}{default}: "
+    if descriptor.input_type is RecipeInputType.BOOLEAN:
+        if descriptor.literal_default is True:
+            choices = "Y/n"
+        elif descriptor.literal_default is False:
+            choices = "y/N"
+        else:
+            choices = "y/n"
+        return f"{descriptor.label} [{choices}]{hint}: "
+    default = (
+        f" (default {descriptor.literal_default})"
+        if descriptor.omission is RecipeInputOmission.LITERAL
+        else ""
+    )
+    return f"{descriptor.label} [{'/'.join(descriptor.choices)}]{hint}{default}: "
 
 
 def _ask_required(prompt: str, *, input_stream: TextIO, output_stream: TextIO) -> str:

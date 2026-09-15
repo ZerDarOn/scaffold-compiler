@@ -11,14 +11,23 @@ from typing import TextIO
 from scaffold_compiler.interactive_configuration import (
     ConfigurationInitializationError,
     build_builtin_recipe_questionnaire_registry,
+    build_declared_recipe_questionnaire_registration,
     write_interactive_configuration,
 )
 from scaffold_compiler.project_recipe_registry import build_builtin_project_recipe_registry
+from scaffold_compiler.recipe_input_descriptor import (
+    RecipeInputDescriptor,
+    RecipeInputOmission,
+    RecipeInputType,
+)
 from scaffold_compiler.recipe_project_configuration import (
     JSONValue,
     build_builtin_answer_normalizers,
 )
-from scaffold_compiler.trusted_recipe_registration import build_recipe_questionnaire_registry
+from scaffold_compiler.trusted_recipe_registration import (
+    RecipeQuestionnaireRegistration,
+    build_recipe_questionnaire_registry,
+)
 
 
 class InteractiveConfigurationTests(unittest.TestCase):
@@ -149,6 +158,86 @@ class InteractiveConfigurationTests(unittest.TestCase):
                     "module_path": "example.com/registered-tool",
                 },
             )
+
+    def test_builtin_questionnaires_preserve_prompts_retries_and_answers(self) -> None:
+        registry = build_builtin_recipe_questionnaire_registry()
+        cases: tuple[
+            tuple[RecipeQuestionnaireRegistration, str, dict[str, JSONValue], str], ...
+        ] = (
+            (
+                registry.registrations[0],
+                "orders_api\nPOSTGRES\n\n",
+                {
+                    "package_name": "orders_api",
+                    "database": "postgres",
+                    "delivery": "none",
+                },
+                "Python package name [derived from project name]: "
+                "Database [none/postgres] (default none): "
+                "Delivery [none/docker] (default none): ",
+            ),
+            (
+                registry.registrations[1],
+                "\nmaybe\nno\n",
+                {"strict_warnings": False},
+                "CMake target name [derived from project name]: "
+                "Strict compiler warnings [Y/n]: "
+                "Please choose one of the listed values.\n"
+                "Strict compiler warnings [Y/n]: ",
+            ),
+            (
+                registry.registrations[2],
+                "\n\n",
+                {},
+                "Go binary name [derived from project name]: "
+                "Go module path [example.com/<binary name>]: ",
+            ),
+        )
+
+        for questionnaire, responses, expected_answers, expected_transcript in cases:
+            with self.subTest(recipe_id=questionnaire.recipe_id):
+                transcript = io.StringIO()
+                answers = questionnaire.collector(io.StringIO(responses), transcript)
+
+                self.assertEqual(answers, expected_answers)
+                self.assertEqual(transcript.getvalue(), expected_transcript)
+
+    def test_declared_questionnaire_factory_handles_required_and_default_inputs(self) -> None:
+        questionnaire = build_declared_recipe_questionnaire_registration(
+            "example-cli",
+            "Example CLI",
+            (
+                RecipeInputDescriptor(
+                    "name",
+                    "Name",
+                    RecipeInputType.STRING,
+                    RecipeInputOmission.REJECT,
+                ),
+                RecipeInputDescriptor(
+                    "enabled",
+                    "Enabled",
+                    RecipeInputType.BOOLEAN,
+                    RecipeInputOmission.LITERAL,
+                    literal_default=False,
+                ),
+                RecipeInputDescriptor(
+                    "flavor",
+                    "Flavor",
+                    RecipeInputType.CHOICE,
+                    RecipeInputOmission.OMIT,
+                    choices=("plain", "spicy"),
+                ),
+            ),
+        )
+        transcript = io.StringIO()
+
+        answers = questionnaire.collector(io.StringIO("\nwidget\n\n\n"), transcript)
+
+        self.assertEqual(answers, {"name": "widget", "enabled": False})
+        self.assertEqual(
+            transcript.getvalue(),
+            "Name: A value is required.\nName: Enabled [y/N]: Flavor [plain/spicy]: ",
+        )
 
     def test_end_of_input_creates_no_configuration_or_temporary_file(self) -> None:
         with TemporaryDirectory() as directory:

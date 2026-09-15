@@ -19,6 +19,7 @@ class RecipeInputDescriptorTests(unittest.TestCase):
                 label="Python package name",
                 input_type=RecipeInputType.STRING,
                 omission=RecipeInputOmission.OMIT,
+                interactive_hint="derived from project name",
             ),
             RecipeInputDescriptor(
                 key="strict_warnings",
@@ -43,6 +44,7 @@ class RecipeInputDescriptorTests(unittest.TestCase):
                 {
                     "choices": [],
                     "interactive_default": None,
+                    "interactive_hint": "derived from project name",
                     "key": "package_name",
                     "label": "Python package name",
                     "omission": "omit",
@@ -52,6 +54,7 @@ class RecipeInputDescriptorTests(unittest.TestCase):
                 {
                     "choices": [],
                     "interactive_default": True,
+                    "interactive_hint": None,
                     "key": "strict_warnings",
                     "label": "Strict compiler warnings",
                     "omission": "literal",
@@ -61,6 +64,7 @@ class RecipeInputDescriptorTests(unittest.TestCase):
                 {
                     "choices": ["none", "postgres"],
                     "interactive_default": "none",
+                    "interactive_hint": None,
                     "key": "database",
                     "label": "Database",
                     "omission": "literal",
@@ -89,6 +93,10 @@ class RecipeInputDescriptorTests(unittest.TestCase):
             (
                 {"key": "name", "label": "Name", "omission": "omit"},
                 "invalid_input_omission",
+            ),
+            (
+                {"key": "name", "label": "Name", "interactive_hint": "bad\nhint"},
+                "invalid_input_hint",
             ),
         )
         for overrides, expected_code in cases:
@@ -126,7 +134,7 @@ class RecipeInputDescriptorTests(unittest.TestCase):
             (
                 {
                     "input_type": RecipeInputType.CHOICE,
-                    "choices": ("a", "a"),
+                    "choices": ("a", "A"),
                 },
                 "duplicate_input_choices",
             ),
