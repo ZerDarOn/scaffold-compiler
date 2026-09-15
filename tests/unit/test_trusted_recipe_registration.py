@@ -13,6 +13,11 @@ from scaffold_compiler.project_validation_adapter_registry import (
     ProjectValidationAdapterRegistration,
     ProjectValidationRequest,
 )
+from scaffold_compiler.recipe_input_descriptor import (
+    RecipeInputDescriptor,
+    RecipeInputOmission,
+    RecipeInputType,
+)
 from scaffold_compiler.recipe_project_configuration import (
     JSONValue,
     RecipeProjectConfiguration,
@@ -111,6 +116,14 @@ def _registration(
             recipe_id=questionnaire_recipe_id or recipe_id,
             label="Example command-line project",
             collector=_collect_answers,
+            inputs=(
+                RecipeInputDescriptor(
+                    key="target_name",
+                    label="Target name",
+                    input_type=RecipeInputType.STRING,
+                    omission=RecipeInputOmission.OMIT,
+                ),
+            ),
         ),
         assembly_adapter_key=assembly_key,
         assembly_adapter=_assemble,
@@ -171,6 +184,10 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
                 for item in compiled.questionnaire_registry.for_recipes(compiled.recipe_registry)
             ),
             ("example-cli", "other-cli"),
+        )
+        self.assertEqual(
+            tuple(item.inputs[0].key for item in compiled.questionnaire_registry.registrations),
+            ("target_name", "target_name"),
         )
         self.assertIs(compiled.assembly_registry.get("example-assembly"), _assemble)
         self.assertEqual(
@@ -296,6 +313,17 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
             )
             self.assertEqual(registered_error.code, expected_code)
 
+    def test_questionnaire_registry_rejects_an_invalid_input_container(self) -> None:
+        questionnaire = replace(
+            _registration().questionnaire,
+            inputs=[],  # type: ignore[arg-type]
+        )
+
+        with self.assertRaises(RecipeQuestionnaireRegistryError) as error_context:
+            build_recipe_questionnaire_registry((questionnaire,))
+
+        self.assertEqual(error_context.exception.code, "invalid_questionnaire_inputs")
+
     def test_runtime_factory_registry_rejects_an_unregistered_recipe(self) -> None:
         compiled = compile_trusted_recipe_registrations((_registration(),))
         recipe = replace(_recipe_from(compiled), recipe_id="other-cli")
@@ -413,6 +441,26 @@ class TrustedRecipeRegistrationTests(unittest.TestCase):
                     questionnaire=replace(registration.questionnaire, collector=None),  # type: ignore[arg-type]
                 ),
                 "invalid_questionnaire",
+            ),
+            (
+                replace(
+                    registration,
+                    questionnaire=replace(registration.questionnaire, inputs=()),
+                ),
+                "invalid_questionnaire_inputs",
+            ),
+            (
+                replace(
+                    registration,
+                    questionnaire=replace(
+                        registration.questionnaire,
+                        inputs=(
+                            registration.questionnaire.inputs[0],
+                            registration.questionnaire.inputs[0],
+                        ),
+                    ),
+                ),
+                "invalid_questionnaire_inputs",
             ),
             (
                 replace(registration, assembly_adapter=None),  # type: ignore[arg-type]

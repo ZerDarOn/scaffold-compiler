@@ -65,6 +65,17 @@ class BuiltinTrustedRecipeRegistrationsTests(unittest.TestCase):
                 expected_recipe_ids,
             )
             self.assertEqual(
+                tuple(
+                    tuple(input_descriptor.key for input_descriptor in item.inputs)
+                    for item in compiled.questionnaire_registry.registrations
+                ),
+                (
+                    ("package_name", "database", "delivery"),
+                    ("target_name", "strict_warnings"),
+                    ("binary_name", "module_path"),
+                ),
+            )
+            self.assertEqual(
                 set(compiled.answer_normalizers),
                 {"fastapi-answers", "cmake-answers", "go-answers"},
             )

@@ -15,6 +15,11 @@ from scaffold_compiler.project_recipe_registry import (
     GO_RECIPE_ID,
     ProjectRecipeRegistry,
 )
+from scaffold_compiler.recipe_input_descriptor import (
+    RecipeInputDescriptor,
+    RecipeInputOmission,
+    RecipeInputType,
+)
 from scaffold_compiler.recipe_project_configuration import (
     AnswerNormalizer,
     JSONValue,
@@ -52,6 +57,30 @@ def build_fastapi_recipe_questionnaire_registration() -> RecipeQuestionnaireRegi
         FASTAPI_RECIPE_ID,
         "Python FastAPI service",
         _collect_fastapi_answers,
+        (
+            RecipeInputDescriptor(
+                "package_name",
+                "Python package name",
+                RecipeInputType.STRING,
+                RecipeInputOmission.OMIT,
+            ),
+            RecipeInputDescriptor(
+                "database",
+                "Database",
+                RecipeInputType.CHOICE,
+                RecipeInputOmission.LITERAL,
+                choices=("none", "postgres"),
+                literal_default="none",
+            ),
+            RecipeInputDescriptor(
+                "delivery",
+                "Delivery",
+                RecipeInputType.CHOICE,
+                RecipeInputOmission.LITERAL,
+                choices=("none", "docker"),
+                literal_default="none",
+            ),
+        ),
     )
 
 
@@ -61,6 +90,21 @@ def build_cmake_recipe_questionnaire_registration() -> RecipeQuestionnaireRegist
         CMAKE_RECIPE_ID,
         "C11/CMake command-line project",
         _collect_cmake_answers,
+        (
+            RecipeInputDescriptor(
+                "target_name",
+                "CMake target name",
+                RecipeInputType.STRING,
+                RecipeInputOmission.OMIT,
+            ),
+            RecipeInputDescriptor(
+                "strict_warnings",
+                "Strict compiler warnings",
+                RecipeInputType.BOOLEAN,
+                RecipeInputOmission.LITERAL,
+                literal_default=True,
+            ),
+        ),
     )
 
 
@@ -70,6 +114,20 @@ def build_go_recipe_questionnaire_registration() -> RecipeQuestionnaireRegistrat
         GO_RECIPE_ID,
         "Go command-line project",
         _collect_go_answers,
+        (
+            RecipeInputDescriptor(
+                "binary_name",
+                "Go binary name",
+                RecipeInputType.STRING,
+                RecipeInputOmission.OMIT,
+            ),
+            RecipeInputDescriptor(
+                "module_path",
+                "Go module path",
+                RecipeInputType.STRING,
+                RecipeInputOmission.OMIT,
+            ),
+        ),
     )
 
 

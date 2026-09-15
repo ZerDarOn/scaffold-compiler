@@ -26,6 +26,7 @@ from scaffold_compiler.project_validation_adapter_registry import (
     ProjectValidationAdapterRegistryError,
     build_project_validation_adapter_registry,
 )
+from scaffold_compiler.recipe_input_descriptor import RecipeInputDescriptor
 from scaffold_compiler.recipe_project_configuration import (
     AnswerNormalizer,
     JSONValue,
@@ -72,6 +73,7 @@ class RecipeQuestionnaireRegistration:
     recipe_id: str
     label: str
     collector: RecipeAnswerCollector
+    inputs: tuple[RecipeInputDescriptor, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -285,6 +287,13 @@ def build_recipe_questionnaire_registry(
                 code="invalid_questionnaire",
                 message="Recipe questionnaire registration is invalid.",
             )
+        if not isinstance(registration.inputs, tuple) or (
+            registration.inputs and not _questionnaire_inputs_are_valid(registration.inputs)
+        ):
+            raise RecipeQuestionnaireRegistryError(
+                code="invalid_questionnaire_inputs",
+                message="Recipe questionnaire inputs are invalid.",
+            )
         if registration.recipe_id in recipe_ids:
             raise RecipeQuestionnaireRegistryError(
                 code="duplicate_questionnaire_recipe",
@@ -328,6 +337,10 @@ def _validate_executable_components(registration: TrustedRecipeRegistration) -> 
         or not callable(registration.questionnaire.collector)
     ):
         _raise_registration_error("invalid_questionnaire")
+    if not registration.questionnaire.inputs or not _questionnaire_inputs_are_valid(
+        registration.questionnaire.inputs
+    ):
+        _raise_registration_error("invalid_questionnaire_inputs")
     if not registration.assembly_adapter_key or not callable(registration.assembly_adapter):
         _raise_registration_error("invalid_assembly_adapter")
     if not callable(registration.validation_adapter.adapter):
@@ -367,6 +380,15 @@ def _compile_answer_normalizers(
             _raise_registration_error("duplicate_answer_parser")
         compiled[registration.answer_parser_key] = registration.answer_normalizer
     return compiled
+
+
+def _questionnaire_inputs_are_valid(inputs: object) -> bool:
+    if not isinstance(inputs, tuple) or any(
+        not isinstance(input_descriptor, RecipeInputDescriptor) for input_descriptor in inputs
+    ):
+        return False
+    keys = tuple(input_descriptor.key for input_descriptor in inputs)
+    return len(keys) == len(set(keys))
 
 
 def _raise_registration_error(code: str) -> NoReturn:
