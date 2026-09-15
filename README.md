@@ -9,7 +9,8 @@ Latest stable release: [`v2.3.0`](https://github.com/ZerDarOn/scaffold-compiler/
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
 The immutable [`v2.3.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1)
 candidate and `v2.2.0` stable release remain available as audit and rollback points.
-The `main` branch is frozen as `2.4.0-rc.1`, pending candidate publication.
+Latest candidate: [`v2.4.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.0-rc.1).
+The `main` branch carries the `2.4.0-rc.1` candidate; `v2.3.0` remains the latest stable release.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 

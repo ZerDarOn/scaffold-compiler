@@ -133,7 +133,8 @@ Can parallelize : 无；公开 schema、注册编译和问卷迁移必须按序�
 - Done：Task 4.1。145 个文件格式检查、lint、124 个源文件严格 mypy 全绿；完整测试在宿主
   权限下等价为 334 passed、6 个按外部工具可用性跳过。GitHub Actions `34972001994` 的
   Windows 核心、Ubuntu 核心和 Linux 四种真实发布组合全部成功。
-- Current：V2.4 功能实现完成并位于 `main`，版本仍为未发布的 `2.4.0-dev`。
-- Next：只有在获得显式发布授权后，才进入候选版本号、不可变 tag、发布资产与下载验收。
+- Current：`v2.4.0-rc.1` 已发布并通过公开下载验收，发布证据见
+  `scaffold_compiler_v2_4_rc1_release_record.md`。
+- Next：候选反馈与稳定版晋升；稳定回滚点仍为 `v2.3.0`。
 - Debt：第三方配方签名、沙箱和分发协议继续延期；FastAPI 双默认行为等待显式兼容决定。
 - Rollback point：`v2.3.0`。
