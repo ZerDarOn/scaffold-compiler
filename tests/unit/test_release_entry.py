@@ -97,8 +97,11 @@ class ReleaseEntryTests(unittest.TestCase):
                 payload["answers"],
                 {"strict_warnings": True, "target_name": "example_cli"},
             )
-            self.assertIn("preview --config", stdout.getvalue())
-            self.assertIn("--confirm-finalize FINALIZE", stdout.getvalue())
+            self.assertIn("preview", stdout.getvalue())
+            self.assertIn("--config", stdout.getvalue())
+            self.assertNotIn("Next: scaffold-compiler", stdout.getvalue())
+            self.assertIn("--confirm-finalize", stdout.getvalue())
+            self.assertIn("FINALIZE", stdout.getvalue())
 
     def test_default_application_previews_legacy_and_v2_fastapi_through_generic_cli(self) -> None:
         with TemporaryDirectory() as directory:

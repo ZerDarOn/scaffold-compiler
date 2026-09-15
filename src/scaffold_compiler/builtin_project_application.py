@@ -26,6 +26,7 @@ def build_builtin_project_command_application(
     go_executable: Path | None = None,
     gofmt_executable: Path | None = None,
     environment: Mapping[str, str],
+    command_invocation: tuple[str, ...] = ("python", "-m", "scaffold_compiler"),
 ) -> ProjectCommandApplication:
     """Compose the generic application with every trusted built-in adapter."""
     compiled = compile_trusted_recipe_registrations(
@@ -51,4 +52,5 @@ def build_builtin_project_command_application(
         assembly_registry=compiled.assembly_registry,
         validation_registry=compiled.validation_registry,
         runtime_factory_registry=compiled.runtime_factory_registry,
+        command_invocation=command_invocation,
     )

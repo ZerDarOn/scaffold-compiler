@@ -95,6 +95,11 @@ def main(
                 go_executable=go_executable,
                 gofmt_executable=gofmt_executable,
                 environment=selected_environment,
+                command_invocation=(
+                    (sys.executable, str(actual_entry))
+                    if capsule is not None
+                    else (sys.executable, "-m", "scaffold_compiler")
+                ),
             )
         except (OSError, ValueError):
             LOGGER.error("release_runtime_initialization_failed")

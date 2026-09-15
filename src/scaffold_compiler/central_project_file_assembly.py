@@ -372,6 +372,10 @@ def _render_readme(
         "",
         "## Setup",
         "",
+        f"Requirements: Python {GENERATED_PROJECT_PYTHON} and uv {UV_VERSION} on PATH.",
+        "Run these commands from this project directory. uv can download the required Python",
+        "version when it is not installed; the first setup needs network access.",
+        "",
         "Install the frozen environment with `uv sync --all-groups --frozen`.",
         "",
     ]

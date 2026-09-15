@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import subprocess
 import sys
 import unittest
@@ -73,12 +75,12 @@ class DisposableReleaseBuilderTests(unittest.TestCase):
             root = Path(directory)
             capsule = build_disposable_release(
                 repository,
-                root / "capsule",
+                root / "capsule with space ' $value",
                 capsule_id=CAPSULE_ID,
                 compiler_version="1.0.0",
             )
             target = root / "delivery"
-            config = root / "project.json"
+            config = root / "project with space ' $value.json"
 
             completed = subprocess.run(
                 (
@@ -102,6 +104,23 @@ class DisposableReleaseBuilderTests(unittest.TestCase):
             )
             self.assertFalse(target.exists())
             self.assertTrue(capsule.exists())
+
+            suggested = next(
+                line.removeprefix("Next: ")
+                for line in completed.stdout.splitlines()
+                if line.startswith("Next: ")
+            )
+            shell = (
+                [shutil.which("pwsh") or "powershell", "-NoProfile", "-Command", suggested]
+                if os.name == "nt"
+                else ["/bin/sh", "-c", suggested]
+            )
+            preview = subprocess.run(
+                shell, cwd=root, capture_output=True, text=True, timeout=30, check=False
+            )
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            self.assertEqual(json.loads(preview.stdout)["recipe"], "c-cmake-cli")
+            self.assertFalse(target.exists())
 
 
 if __name__ == "__main__":

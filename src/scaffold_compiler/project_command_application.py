@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shlex
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -64,6 +66,7 @@ class ProjectCommandApplication:
         runtime_factory_registry: RecipeRuntimeFactoryRegistry,
         generation_runner: ProjectGenerationRunner = execute_project_generation,
         run_id_factory: Callable[[], str] | None = None,
+        command_invocation: tuple[str, ...] = ("python", "-m", "scaffold_compiler"),
     ) -> None:
         self._catalog_root = catalog_root.resolve(strict=True)
         self._working_directory = working_directory.resolve(strict=True)
@@ -76,6 +79,7 @@ class ProjectCommandApplication:
         self._runtime_factory_registry = runtime_factory_registry
         self._generation_runner = generation_runner
         self._run_id_factory = run_id_factory or (lambda: uuid.uuid4().hex)
+        self._command_invocation = command_invocation
 
     def list_recipes(self) -> CommandOutcome:
         """Return deterministic public metadata for every trusted built-in recipe."""
@@ -139,12 +143,26 @@ class ProjectCommandApplication:
             LOGGER.error("project_configuration_initialization_failed")
             return CommandOutcome(1, "Configuration was not created.")
         display_path = created.as_posix()
+
+        def command(*arguments: str) -> str:
+            tokens = (*self._command_invocation, *arguments)
+            if os.name == "nt":
+                return "& " + " ".join("'" + token.replace("'", "''") + "'" for token in tokens)
+            return shlex.join(tokens)
+
         return CommandOutcome(
             0,
             "Configuration created successfully.\n"
-            f'Next: scaffold-compiler preview --config "{display_path}"\n'
-            "Then, after review: scaffold-compiler run "
-            f'--config "{display_path}" --non-interactive --confirm-finalize FINALIZE',
+            f"Next: {command('preview', '--config', display_path)}\n"
+            "Then, after review: "
+            + command(
+                "run",
+                "--config",
+                display_path,
+                "--non-interactive",
+                "--confirm-finalize",
+                "FINALIZE",
+            ),
         )
 
     def preview(self, config_path: Path) -> CommandOutcome:
