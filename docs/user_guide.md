@@ -5,6 +5,20 @@ one trusted built-in recipe, preview the exact blueprint and validation plan, th
 transaction. A successful release leaves only the generated project; the disposable compiler
 capsule removes itself through an external, manifest-bound supervisor.
 
+## Discover trusted recipes
+
+List the recipes compiled into the current source tree or release capsule:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz recipes
+```
+
+`recipes` prints deterministic schema-1 JSON with the compiler version and an ordered recipe list.
+Each item contains its trusted ID, user-facing label, recipe version, prerequisites, allowed
+blueprints, and allowed validation gates. The command accepts no configuration or arbitrary source,
+does not probe external tools or the network, and creates no configuration, workspace, target, or
+cleanup process. It never includes resolved executable paths, environment values, or secrets.
+
 ## Choose a recipe
 
 | Recipe ID | Generates | Required local tools |

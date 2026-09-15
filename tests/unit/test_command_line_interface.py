@@ -16,6 +16,9 @@ class RecordingCommandService:
     def preview(self, config_path: Path) -> CommandOutcome:
         return self._record("preview", config_path)
 
+    def list_recipes(self) -> CommandOutcome:
+        return self._record("recipes")
+
     def initialize_configuration(
         self,
         config_path: Path,
@@ -88,6 +91,19 @@ class CommandLineInterfaceTests(unittest.TestCase):
                 self.assertEqual(stdout, "completed\n")
                 self.assertEqual(stderr, "")
                 self.assertEqual(service.calls, [(command, (expected_path,))])
+
+    def test_recipes_routes_without_arguments_or_interactive_input(self) -> None:
+        exit_code, stdout, stderr, service = self.execute(["recipes"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stdout, "completed\n")
+        self.assertEqual(stderr, "")
+        self.assertEqual(service.calls, [("recipes", ())])
+
+        exit_code, _stdout, stderr, service = self.execute(["recipes", "unexpected"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("unrecognized arguments", stderr)
+        self.assertEqual(service.calls, [])
 
     def test_discard_requires_the_exact_explicit_confirmation(self) -> None:
         for arguments in (

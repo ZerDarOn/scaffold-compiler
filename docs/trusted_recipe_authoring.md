@@ -37,7 +37,10 @@ Add the completed builder to `builtin_trusted_recipe_registrations.py`. Do not s
 application composition root. `compile_trusted_recipe_registrations` validates every cross-component
 identity and key, rejects duplicate or incomplete bindings, and only then exposes the recipe,
 answer, questionnaire, assembly, validation, and runtime registries as one immutable result. The
-compiler does not invoke any registered callable while compiling the set.
+compiler does not invoke any registered callable while compiling the set. The public `recipes`
+command derives its label from the questionnaire registration and all other fields from the compiled
+recipe declaration; it must not expose adapter keys, callables, resolved tool paths, or environment
+values.
 
 Use the existing FastAPI, CMake, and Go registration modules as executable examples. The intended
 shape is:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -20,6 +21,35 @@ from scaffold_compiler.recipe_project_configuration import (
 
 
 class BuiltinProjectApplicationTests(unittest.TestCase):
+    def test_recipe_catalog_exposes_all_builtins_without_runtime_values(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            catalog_root = root / "catalog"
+            catalog_root.mkdir()
+            application = build_builtin_project_command_application(
+                catalog_root=catalog_root,
+                working_directory=root,
+                home_directory=root,
+                uv_executable=root / "private-uv",
+                docker_executable=root / "private-docker",
+                cmake_executable=root / "private-cmake",
+                ctest_executable=root / "private-ctest",
+                go_executable=root / "private-go",
+                gofmt_executable=root / "private-gofmt",
+                environment={"DATABASE_URL": "private-database-url"},
+            )
+
+            outcome = application.list_recipes()
+
+            self.assertEqual(outcome.exit_code, 0)
+            catalog = json.loads(outcome.message)
+            self.assertEqual(
+                [recipe["id"] for recipe in catalog["recipes"]],
+                ["python-fastapi-service", "c-cmake-cli", "go-cli"],
+            )
+            self.assertNotIn(root.as_posix(), outcome.message)
+            self.assertNotIn("private", outcome.message)
+
     def test_fastapi_runtime_forbids_the_bound_short_workspace(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory).resolve()

@@ -9,6 +9,7 @@ Latest stable release: [`v2.3.0`](https://github.com/ZerDarOn/scaffold-compiler/
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
 The immutable [`v2.3.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1)
 candidate and `v2.2.0` stable release remain available as audit and rollback points.
+The `main` branch is the unpublished `2.4.0-dev` development line.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
@@ -49,7 +50,15 @@ the collected units and refuses incomplete or mismatched wiring before generatio
 ## Run a release capsule
 
 Keep the distributed `capsule_manifest.json`, `scaffold_compiler.pyz`, and `blueprints` directory
-together in their original capsule directory. The recommended first step is the interactive
+together in their original capsule directory. Inspect the trusted recipe catalog without creating
+files or probing external tools:
+
+```powershell
+python .\scaffold-compiler-capsule\scaffold_compiler.pyz recipes
+```
+
+The command emits deterministic schema-1 JSON containing recipe identities, labels, versions,
+prerequisites, and blueprint and validation allowlists. The recommended next step is the interactive
 configuration wizard:
 
 ```powershell
@@ -190,7 +199,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.3.0 `
+  --destination .\dist\scaffold-compiler-2.4.0-dev `
   --archive
 ```
 

@@ -33,6 +33,8 @@ class CommandOutcome:
 class ScaffoldCommandService(Protocol):
     """Application boundary consumed by the command-line adapter."""
 
+    def list_recipes(self) -> CommandOutcome: ...
+
     def initialize_configuration(
         self,
         config_path: Path,
@@ -99,6 +101,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = _SafeArgumentParser(prog="scaffold-compiler")
     commands = parser.add_subparsers(dest="command", required=True)
 
+    commands.add_parser("recipes")
+
     initialize = commands.add_parser("init")
     initialize.add_argument("--output", required=True, type=Path)
 
@@ -134,6 +138,8 @@ def _dispatch(
     output_stream: TextIO,
 ) -> CommandOutcome:
     command = parsed.command
+    if command == "recipes":
+        return service.list_recipes()
     if command == "init":
         return service.initialize_configuration(parsed.output, input_stream, output_stream)
     if command == "preview":

@@ -21,6 +21,7 @@ class DocumentationContractTests(unittest.TestCase):
     def test_user_guide_covers_all_recipes_and_the_complete_public_lifecycle(self) -> None:
         for recipe_id in ("python-fastapi-service", "c-cmake-cli", "go-cli"):
             self.assertIn(recipe_id, self.user_guide)
+        self.assertIn("scaffold_compiler.pyz recipes", self.user_guide)
         for command in ("init", "preview", "run", "inspect", "discard", "cleanup"):
             self.assertIn(f" {command} `", self.user_guide)
         for confirmation in (
@@ -33,6 +34,7 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("does not delete the published target", normalized_user_guide)
         self.assertIn("existing file is never overwritten", normalized_user_guide)
         self.assertIn("does not arm capsule self-cleanup", normalized_user_guide)
+        self.assertIn("does not probe external tools or the network", normalized_user_guide)
         self.assertIn("example.com/example-tool", self.user_guide)
         self.assertIn("120 UTF-16 code units", self.user_guide)
         self.assertIn(".scw-<workspace-id>", self.user_guide)

@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TextIO
 
+from scaffold_compiler import __version__
 from scaffold_compiler.blueprint_catalog import load_blueprint_catalog
 from scaffold_compiler.blueprint_plan_compiler import (
     compile_recipe_blueprint_plan,
@@ -37,6 +38,7 @@ from scaffold_compiler.recipe_project_configuration import (
 )
 from scaffold_compiler.trusted_recipe_registration import (
     RecipeQuestionnaireRegistry,
+    RecipeQuestionnaireRegistryError,
     RecipeRuntimeFactoryRegistry,
 )
 
@@ -74,6 +76,43 @@ class ProjectCommandApplication:
         self._runtime_factory_registry = runtime_factory_registry
         self._generation_runner = generation_runner
         self._run_id_factory = run_id_factory or (lambda: uuid.uuid4().hex)
+
+    def list_recipes(self) -> CommandOutcome:
+        """Return deterministic public metadata for every trusted built-in recipe."""
+        try:
+            questionnaires = self._questionnaire_registry.for_recipes(self._recipe_registry)
+        except RecipeQuestionnaireRegistryError as error:
+            LOGGER.error("project_recipe_catalog_failed code=%s", error.code)
+            return CommandOutcome(1, "Project recipe catalog could not be created.")
+        recipes = [
+            {
+                "allowed_blueprints": list(recipe.allowed_blueprint_ids),
+                "allowed_validations": list(recipe.allowed_validation_gates),
+                "id": recipe.recipe_id,
+                "label": questionnaire.label,
+                "prerequisites": list(recipe.prerequisites),
+                "version": recipe.version,
+            }
+            for recipe, questionnaire in zip(
+                self._recipe_registry.recipes,
+                questionnaires,
+                strict=True,
+            )
+        ]
+        LOGGER.info("project_recipe_catalog_completed recipes=%d", len(recipes))
+        return CommandOutcome(
+            0,
+            json.dumps(
+                {
+                    "compiler_version": __version__,
+                    "recipes": recipes,
+                    "schema_version": 1,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+        )
 
     def initialize_configuration(
         self,

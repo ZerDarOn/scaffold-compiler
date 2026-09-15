@@ -143,6 +143,45 @@ def _application(
 
 
 class ProjectCommandApplicationTests(unittest.TestCase):
+    def test_recipes_reports_deterministic_trusted_metadata_without_side_effects(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            catalog_root, _config_path = _write_fixture(root)
+            application = _application(
+                root,
+                catalog_root,
+                generation_runner=cast(ProjectGenerationRunner, lambda *args, **kwargs: None),
+                runtime_factory=lambda *args: object(),
+            )
+            paths_before = tuple(sorted(path.relative_to(root) for path in root.rglob("*")))
+
+            first = application.list_recipes()
+            second = application.list_recipes()
+
+            self.assertEqual(first, second)
+            self.assertEqual(first.exit_code, 0)
+            self.assertEqual(
+                json.loads(first.message),
+                {
+                    "compiler_version": "2.4.0-dev",
+                    "recipes": [
+                        {
+                            "allowed_blueprints": ["generic-core"],
+                            "allowed_validations": ["unit-tests"],
+                            "id": "generic-cli",
+                            "label": "Generic command-line project",
+                            "prerequisites": [],
+                            "version": "1.2.0",
+                        }
+                    ],
+                    "schema_version": 1,
+                },
+            )
+            self.assertEqual(
+                tuple(sorted(path.relative_to(root) for path in root.rglob("*"))),
+                paths_before,
+            )
+
     def test_preview_reports_recipe_identity_and_language_neutral_plan(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)

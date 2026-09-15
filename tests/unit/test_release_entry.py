@@ -35,6 +35,31 @@ class SuccessfulRunApplication:
 
 
 class ReleaseEntryTests(unittest.TestCase):
+    def test_default_application_lists_recipes_without_resolving_external_tools(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            stdout = io.StringIO()
+            with patch(
+                "scaffold_compiler.release_entry.resolve_uv_executable",
+                side_effect=AssertionError("recipe discovery must not resolve tools"),
+            ):
+                exit_code = main(
+                    ["recipes"],
+                    entry_path=root / "source-entry.py",
+                    stdout=stdout,
+                    stderr=io.StringIO(),
+                    environment={"DATABASE_URL": "private-value"},
+                )
+
+            self.assertEqual(exit_code, 0)
+            catalog = json.loads(stdout.getvalue())
+            self.assertEqual(
+                [recipe["id"] for recipe in catalog["recipes"]],
+                ["python-fastapi-service", "c-cmake-cli", "go-cli"],
+            )
+            self.assertNotIn("private-value", stdout.getvalue())
+            self.assertEqual(list(root.iterdir()), [])
+
     def test_default_application_initializes_a_valid_cmake_configuration_only(self) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory)
