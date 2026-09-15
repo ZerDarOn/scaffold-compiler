@@ -130,7 +130,10 @@ Can parallelize : 无；公开 schema、注册编译和问卷迁移必须按序�
   空值语义、交互默认和推导提示；源码入口仍保持确定、只读和无运行时值泄漏。
 - Done：Task 3.2。用户与作者文档已同步；真实构建胶囊与源码入口的 `recipes` stdout、stderr
   逐字一致，schema 2 输入顺序正确，携带私有环境值时无泄漏，执行前后文件快照一致。
-- Current：Phase 4，功能开发完成，等待全量质量门和 CI 跨平台、真实组合验证。
-- Next：运行完整格式、lint、严格 mypy、单元/验收测试，推送后核验全部 GitHub Actions。
+- Done：Task 4.1。145 个文件格式检查、lint、124 个源文件严格 mypy 全绿；完整测试在宿主
+  权限下等价为 334 passed、6 个按外部工具可用性跳过。GitHub Actions `34972001994` 的
+  Windows 核心、Ubuntu 核心和 Linux 四种真实发布组合全部成功。
+- Current：V2.4 功能实现完成并位于 `main`，版本仍为未发布的 `2.4.0-dev`。
+- Next：只有在获得显式发布授权后，才进入候选版本号、不可变 tag、发布资产与下载验收。
 - Debt：第三方配方签名、沙箱和分发协议继续延期；FastAPI 双默认行为等待显式兼容决定。
 - Rollback point：`v2.3.0`。
