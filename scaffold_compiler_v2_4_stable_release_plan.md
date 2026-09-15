@@ -32,4 +32,24 @@
 4e62de0ed563a7e3e19cdd75f4a3bfe9030145a8e680eb93cc59502d75da3771
 ```
 
-下一步等待冻结提交的 CI，通过后确认公开稳定版发布。尚未创建稳定标签或公开稳定资产。
+## 稳定发布与公开验收
+
+- 冻结提交：`5e16ea1a2b61592b87a92d9a0030cfb3a82adc04`。
+- 冻结提交 CI：`34997764376`，Windows、Ubuntu、Linux 四种真实组合全部成功。
+- 不可变注释标签：`v2.4.0`，指向上述冻结提交。
+- 标签发布工作流：`34998875006`，质量门、资产构建和公开稳定版发布全部成功。
+- 公开稳定版：<https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.0>。
+- 2026-09-16 重新下载公开 ZIP 与 `.sha256`，ZIP 完整性与摘要匹配，且摘要与 GitHub
+  资产元数据一致。公开 ZIP 的 SHA-256 为：
+
+```text
+9eda549bb05cdac702b8073c06add756503c0ecc8abfc3be7d03f838151ff034
+```
+
+- 公开胶囊版本为 `2.4.0`，`recipes` 返回 schema 2 和三种配方，执行前后文件/目录快照一致。
+- Windows 真实 FastAPI none/none 配方以 89 字符目标目录名完成 init、preview、run、验证门
+  和 FINALIZE；成品有预期 ASGI 入口。
+- 胶囊、外部清理日志及 `.scw-*` 工作区均清除，成品没有 scaffold 命名残留。
+- 本地双构建摘要仅是准备证据；公开资产来自 Linux 标签工作流，以上述公开摘要为准。
+
+`v2.4.0` 稳定版发布与验收完成。`v2.3.0` 及 RC1 保留为回滚和审计点。
