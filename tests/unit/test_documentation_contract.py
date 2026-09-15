@@ -35,6 +35,9 @@ class DocumentationContractTests(unittest.TestCase):
         self.assertIn("existing file is never overwritten", normalized_user_guide)
         self.assertIn("does not arm capsule self-cleanup", normalized_user_guide)
         self.assertIn("does not probe external tools or the network", normalized_user_guide)
+        self.assertIn("schema-2 JSON", self.user_guide)
+        self.assertIn("interactive default", normalized_user_guide)
+        self.assertIn("derivation hint", normalized_user_guide)
         self.assertIn("example.com/example-tool", self.user_guide)
         self.assertIn("120 UTF-16 code units", self.user_guide)
         self.assertIn(".scw-<workspace-id>", self.user_guide)
@@ -51,6 +54,9 @@ class DocumentationContractTests(unittest.TestCase):
             "validation adapter",
             "TrustedRecipeRegistration",
             "compile_trusted_recipe_registrations",
+            "RecipeInputDescriptor",
+            "build_declared_recipe_questionnaire_registration",
+            "interactive_default",
             "not a runtime plugin API",
             "cannot execute",
             "docs/trusted_recipe_authoring.md",

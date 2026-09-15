@@ -47,6 +47,21 @@ class BuiltinProjectApplicationTests(unittest.TestCase):
                 [recipe["id"] for recipe in catalog["recipes"]],
                 ["python-fastapi-service", "c-cmake-cli", "go-cli"],
             )
+            self.assertEqual(catalog["schema_version"], 2)
+            self.assertEqual(
+                [[item["key"] for item in recipe["inputs"]] for recipe in catalog["recipes"]],
+                [
+                    ["package_name", "database", "delivery"],
+                    ["target_name", "strict_warnings"],
+                    ["binary_name", "module_path"],
+                ],
+            )
+            self.assertEqual(catalog["recipes"][0]["inputs"][1]["interactive_default"], "none")
+            self.assertEqual(catalog["recipes"][1]["inputs"][1]["interactive_default"], True)
+            self.assertEqual(
+                catalog["recipes"][2]["inputs"][1]["interactive_hint"],
+                "example.com/<binary name>",
+            )
             self.assertNotIn(root.as_posix(), outcome.message)
             self.assertNotIn("private", outcome.message)
 

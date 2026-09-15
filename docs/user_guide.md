@@ -13,11 +13,16 @@ List the recipes compiled into the current source tree or release capsule:
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz recipes
 ```
 
-`recipes` prints deterministic schema-1 JSON with the compiler version and an ordered recipe list.
+`recipes` prints deterministic schema-2 JSON with the compiler version and an ordered recipe list.
 Each item contains its trusted ID, user-facing label, recipe version, prerequisites, allowed
-blueprints, and allowed validation gates. The command accepts no configuration or arbitrary source,
-does not probe external tools or the network, and creates no configuration, workspace, target, or
-cleanup process. It never includes resolved executable paths, environment values, or secrets.
+blueprints, allowed validation gates, and ordered `inputs`. An input descriptor reports its key,
+label, type, choices, required flag, empty-answer behavior, interactive default, and derivation hint.
+This is sufficient for a UI or automation to build the same trusted questionnaire without scraping
+terminal prompts. The authoritative answer normalizer still validates the submitted configuration.
+
+The command accepts no configuration or arbitrary source, does not probe external tools or the
+network, and creates no configuration, workspace, target, or cleanup process. It never includes
+resolved executable paths, adapter names, callables, environment values, or secrets.
 
 ## Choose a recipe
 

@@ -126,7 +126,11 @@ Can parallelize : 无；公开 schema、注册编译和问卷迁移必须按序�
   内置配方已声明全部输入，完整注册编译会原子拒绝空描述、重复键和错误容器，不暴露部分结果。
 - Done：Task 2.3。通用问卷工厂支持字符串、布尔和枚举，以及 reject、omit、literal 三种
   空值语义；三种内置配方已删除语言专用输入循环，逐字提示、重试和配置输出合同保持一致。
-- Current：Phase 3，描述符仍只驱动交互问卷，`recipes` 对外目录保持 schema 1。
-- Next：Task 3.1，将同一份已编译描述符作为 schema 2 的 `inputs` 输出，并锁定顺序与无泄漏合同。
+- Done：Task 3.1。`recipes` schema 2 按注册顺序输出同一份 `inputs`，包含类型、选择、必填性、
+  空值语义、交互默认和推导提示；源码入口仍保持确定、只读和无运行时值泄漏。
+- Done：Task 3.2。用户与作者文档已同步；真实构建胶囊与源码入口的 `recipes` stdout、stderr
+  逐字一致，schema 2 输入顺序正确，携带私有环境值时无泄漏，执行前后文件快照一致。
+- Current：Phase 4，功能开发完成，等待全量质量门和 CI 跨平台、真实组合验证。
+- Next：运行完整格式、lint、严格 mypy、单元/验收测试，推送后核验全部 GitHub Actions。
 - Debt：第三方配方签名、沙箱和分发协议继续延期；FastAPI 双默认行为等待显式兼容决定。
 - Rollback point：`v2.3.0`。

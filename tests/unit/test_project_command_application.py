@@ -26,6 +26,11 @@ from scaffold_compiler.project_recipe_registry import ProjectRecipe, ProjectReci
 from scaffold_compiler.project_validation_adapter_registry import (
     build_project_validation_adapter_registry,
 )
+from scaffold_compiler.recipe_input_descriptor import (
+    RecipeInputDescriptor,
+    RecipeInputOmission,
+    RecipeInputType,
+)
 from scaffold_compiler.recipe_project_configuration import JSONValue, RecipeProjectConfiguration
 from scaffold_compiler.session_state_store import FailureStage, SessionState
 from scaffold_compiler.trusted_recipe_registration import (
@@ -123,6 +128,15 @@ def _application(
                     recipe.recipe_id,
                     "Generic command-line project",
                     _collect_answers,
+                    (
+                        RecipeInputDescriptor(
+                            "target_name",
+                            "Target name",
+                            RecipeInputType.STRING,
+                            RecipeInputOmission.OMIT,
+                            interactive_hint="derived from project name",
+                        ),
+                    ),
                 ),
             )
         ),
@@ -169,12 +183,24 @@ class ProjectCommandApplicationTests(unittest.TestCase):
                             "allowed_blueprints": ["generic-core"],
                             "allowed_validations": ["unit-tests"],
                             "id": "generic-cli",
+                            "inputs": [
+                                {
+                                    "choices": [],
+                                    "interactive_default": None,
+                                    "interactive_hint": "derived from project name",
+                                    "key": "target_name",
+                                    "label": "Target name",
+                                    "omission": "omit",
+                                    "required": False,
+                                    "type": "string",
+                                }
+                            ],
                             "label": "Generic command-line project",
                             "prerequisites": [],
                             "version": "1.2.0",
                         }
                     ],
-                    "schema_version": 1,
+                    "schema_version": 2,
                 },
             )
             self.assertEqual(

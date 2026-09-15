@@ -38,9 +38,29 @@ application composition root. `compile_trusted_recipe_registrations` validates e
 identity and key, rejects duplicate or incomplete bindings, and only then exposes the recipe,
 answer, questionnaire, assembly, validation, and runtime registries as one immutable result. The
 compiler does not invoke any registered callable while compiling the set. The public `recipes`
-command derives its label from the questionnaire registration and all other fields from the compiled
-recipe declaration; it must not expose adapter keys, callables, resolved tool paths, or environment
-values.
+command derives its label and ordered input descriptors from the questionnaire registration and all
+other fields from the compiled recipe declaration; it must not expose adapter keys, callables,
+resolved tool paths, or environment values.
+
+## Declarative questionnaire inputs
+
+Define every recipe-specific answer as an immutable `RecipeInputDescriptor`, then pass the ordered
+tuple to `build_declared_recipe_questionnaire_registration`. Supported types are `string`,
+`boolean`, and `choice`. Empty input is explicitly one of `reject`, `omit`, or `literal`; a literal
+default must match the declared type and, for a choice, one of its allowed values. Keys are unique
+within a questionnaire, choices are case-insensitively unique, and labels and hints reject control
+characters.
+
+The shared collector interprets these descriptions, so a new recipe does not implement its own input
+loop. The recipe answer normalizer remains authoritative and must independently validate and derive
+the final canonical answer object. Interactive defaults can intentionally differ from values applied
+when a hand-written configuration omits a field; document that compatibility decision rather than
+silently changing either path.
+
+`recipes` schema 2 serializes the same descriptors as non-executable `inputs`. It reports `key`,
+`label`, `type`, `choices`, `required`, `omission`, `interactive_default`, and `interactive_hint` in
+registration order. Do not put commands, module paths, tool locations, secrets, or environment
+values in any public descriptor.
 
 Use the existing FastAPI, CMake, and Go registration modules as executable examples. The intended
 shape is:

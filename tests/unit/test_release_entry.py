@@ -53,9 +53,14 @@ class ReleaseEntryTests(unittest.TestCase):
 
             self.assertEqual(exit_code, 0)
             catalog = json.loads(stdout.getvalue())
+            self.assertEqual(catalog["schema_version"], 2)
             self.assertEqual(
                 [recipe["id"] for recipe in catalog["recipes"]],
                 ["python-fastapi-service", "c-cmake-cli", "go-cli"],
+            )
+            self.assertEqual(
+                [item["key"] for item in catalog["recipes"][0]["inputs"]],
+                ["package_name", "database", "delivery"],
             )
             self.assertNotIn("private-value", stdout.getvalue())
             self.assertEqual(list(root.iterdir()), [])

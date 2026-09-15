@@ -57,9 +57,11 @@ files or probing external tools:
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz recipes
 ```
 
-The command emits deterministic schema-1 JSON containing recipe identities, labels, versions,
-prerequisites, and blueprint and validation allowlists. The recommended next step is the interactive
-configuration wizard:
+The command emits deterministic schema-2 JSON containing recipe identities, labels, versions,
+prerequisites, blueprint and validation allowlists, and ordered input descriptors. Each descriptor
+states its key, type, choices, required and omission behavior, interactive default, and derivation
+hint, so a UI or automation can construct a form without scraping prompts. The recommended next
+step is the interactive configuration wizard:
 
 ```powershell
 python .\scaffold-compiler-capsule\scaffold_compiler.pyz init `

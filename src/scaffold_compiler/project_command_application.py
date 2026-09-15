@@ -89,6 +89,9 @@ class ProjectCommandApplication:
                 "allowed_blueprints": list(recipe.allowed_blueprint_ids),
                 "allowed_validations": list(recipe.allowed_validation_gates),
                 "id": recipe.recipe_id,
+                "inputs": [
+                    input_descriptor.to_public_data() for input_descriptor in questionnaire.inputs
+                ],
                 "label": questionnaire.label,
                 "prerequisites": list(recipe.prerequisites),
                 "version": recipe.version,
@@ -106,7 +109,7 @@ class ProjectCommandApplication:
                 {
                     "compiler_version": __version__,
                     "recipes": recipes,
-                    "schema_version": 1,
+                    "schema_version": 2,
                 },
                 ensure_ascii=False,
                 separators=(",", ":"),
