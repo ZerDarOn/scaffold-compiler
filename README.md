@@ -10,7 +10,7 @@ Download the versioned ZIP and verify it with the adjacent `.sha256` file before
 The immutable [`v2.3.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1)
 candidate and `v2.2.0` stable release remain available as audit and rollback points.
 Latest candidate: [`v2.4.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.0-rc.1).
-The `main` branch carries `2.4.0`; `v2.3.0` remains available as the previous stable rollback point.
+The `main` branch is frozen as `2.4.1`, pending patch publication; `v2.4.0` remains the stable rollback point.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
@@ -202,7 +202,7 @@ Maintainers can build the current version without overwriting an existing artifa
 ```powershell
 New-Item -ItemType Directory -Path dist
 .venv\Scripts\python -m scaffold_compiler.release_capsule_command `
-  --destination .\dist\scaffold-compiler-2.4.0 `
+  --destination .\dist\scaffold-compiler-2.4.1 `
   --archive
 ```
 
