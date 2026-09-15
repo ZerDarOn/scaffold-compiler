@@ -177,7 +177,7 @@ class ProjectCommandApplicationTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(first.message),
                 {
-                    "compiler_version": "2.4.0-dev",
+                    "compiler_version": "2.4.0-rc.1",
                     "recipes": [
                         {
                             "allowed_blueprints": ["generic-core"],
