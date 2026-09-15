@@ -5,12 +5,12 @@ a verified, standalone project. It is a disposable generator, not a long-term pr
 after a successful release run, an external supervisor removes the generator capsule. The finalized
 project contains no generator, blueprint, journal, or run metadata.
 
-Latest stable release: [`v2.4.0`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.0).
+Latest stable release: [`v2.4.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.1).
 Download the versioned ZIP and verify it with the adjacent `.sha256` file before extracting it.
 The immutable [`v2.3.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.3.0-rc.1)
 candidate and `v2.2.0` stable release remain available as audit and rollback points.
 Latest candidate: [`v2.4.0-rc.1`](https://github.com/ZerDarOn/scaffold-compiler/releases/tag/v2.4.0-rc.1).
-The `main` branch is frozen as `2.4.1`, pending patch publication; `v2.4.0` remains the stable rollback point.
+The `main` branch carries `2.4.1`; `v2.4.0` remains the previous stable rollback point.
 
 The FastAPI recipe retains the four V1-compatible combinations:
 
