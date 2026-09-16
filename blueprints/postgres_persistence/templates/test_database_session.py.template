@@ -1,27 +1,46 @@
 import asyncio
-from typing import cast
+import io
+import shutil
+import subprocess
+import sys
+from contextlib import aclosing
+from pathlib import Path
+from typing import Annotated, cast
+
+import pytest
+from alembic import command
+from alembic.config import Config
+from alembic.script import Script
+from fastapi import Depends, FastAPI, Request
+from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ${package_name}.persistence.database_session import (
     AsyncSessionFactory,
+    database_session,
     transaction_session,
 )
 
 
 class FakeSession:
-    committed = False
-    rolled_back = False
+    def __init__(self, *, fail_commit: bool = False) -> None:
+        self.events: list[str] = []
+        self.fail_commit = fail_commit
 
     async def __aenter__(self) -> FakeSession:
+        self.events.append("open")
         return self
 
     async def __aexit__(self, *_args: object) -> None:
-        return None
+        self.events.append("close")
 
     async def commit(self) -> None:
-        self.committed = True
+        self.events.append("commit")
+        if self.fail_commit:
+            raise RuntimeError("commit failed")
 
     async def rollback(self) -> None:
-        self.rolled_back = True
+        self.events.append("rollback")
 
 
 class FakeFactory:
@@ -32,19 +51,103 @@ class FakeFactory:
         return self.session
 
 
-def test_transaction_rolls_back_when_request_work_fails() -> None:
+@pytest.mark.parametrize("failure", [RuntimeError, asyncio.CancelledError])
+def test_transaction_rolls_back_when_request_work_fails(failure: type[BaseException]) -> None:
     session = FakeSession()
 
     async def exercise() -> None:
         factory = cast(AsyncSessionFactory, FakeFactory(session))
-        try:
-            async for yielded in transaction_session(factory):
+        with pytest.raises(failure):
+            async with transaction_session(factory) as yielded:
                 assert cast(object, yielded) is cast(object, session)
-                raise RuntimeError("request failed")
-        except RuntimeError:
-            pass
+                raise failure("request failed")
+        # Assert before loop shutdown, not after deferred generator finalization.
+        assert session.events == ["open", "rollback", "close"]
 
     asyncio.run(exercise())
 
-    assert session.rolled_back
-    assert not session.committed
+
+@pytest.mark.parametrize("fail_commit", [False, True])
+def test_http_response_waits_for_transaction(fail_commit: bool) -> None:
+    session = FakeSession(fail_commit=fail_commit)
+    application = FastAPI()
+    application.state.database_session_factory = FakeFactory(session)
+
+    @application.post("/transaction")
+    async def endpoint(
+        database: Annotated[AsyncSession, Depends(database_session, scope="function")],
+    ) -> dict[str, bool]:
+        assert cast(object, database) is session
+        return {"ok": True}
+
+    with TestClient(application, raise_server_exceptions=False) as client:
+        response = client.post("/transaction")
+    assert response.status_code == (500 if fail_commit else 200)
+    assert session.events == (
+        ["open", "commit", "rollback", "close"] if fail_commit else ["open", "commit", "close"]
+    )
+
+
+def test_create_revision_and_render_offline_sql(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = Path(__file__).resolve().parents[2]
+    migrations = tmp_path / "migrations"
+    shutil.copytree(project / "migrations", migrations)
+    output = io.StringIO()
+    config = Config(str(project / "alembic.ini"), output_buffer=output)
+    config.set_main_option("script_location", str(migrations))
+    revision = command.revision(config, message="test revision", rev_id="test_revision")
+    assert isinstance(revision, Script)
+    for arguments in (("check",), ("format", "--check")):
+        subprocess.run(
+            [sys.executable, "-m", "ruff", *arguments, revision.path],
+            cwd=project,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
+    command.upgrade(config, "head", sql=True)
+    assert "test_revision" in output.getvalue()
+
+
+def test_success_commits_and_closes() -> None:
+    session = FakeSession()
+
+    async def exercise() -> None:
+        async with transaction_session(cast(AsyncSessionFactory, FakeFactory(session))):
+            pass
+        assert session.events == ["open", "commit", "close"]
+
+    asyncio.run(exercise())
+
+
+def test_commit_failure_rolls_back_and_closes() -> None:
+    session = FakeSession(fail_commit=True)
+
+    async def exercise() -> None:
+        with pytest.raises(RuntimeError, match="commit failed"):
+            async with transaction_session(cast(AsyncSessionFactory, FakeFactory(session))):
+                pass
+        assert session.events == ["open", "commit", "rollback", "close"]
+
+    asyncio.run(exercise())
+
+
+def test_dependency_propagates_failure_and_closes_immediately() -> None:
+    session = FakeSession()
+    application = FastAPI()
+    application.state.database_session_factory = FakeFactory(session)
+    request = Request({"type": "http", "app": application})
+
+    async def exercise() -> None:
+        async with aclosing(database_session(request)) as dependency:
+            await anext(dependency)
+            with pytest.raises(RuntimeError, match="endpoint failed"):
+                await dependency.athrow(RuntimeError("endpoint failed"))
+            assert session.events == ["open", "rollback", "close"]
+
+    asyncio.run(exercise())

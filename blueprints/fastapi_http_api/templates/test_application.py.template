@@ -1,10 +1,23 @@
+import asyncio
+import json
+import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import pytest
+from starlette.types import Message, Receive, Scope, Send
 
 from ${package_name}.application import (
     create_application,
 )
 from ${package_name}.configuration.application_settings import (
     ApplicationSettings,
+)
+from ${package_name}.errors.application_error import ApplicationError
+from ${package_name}.observability.logging_configuration import JsonLogFormatter
+from ${package_name}.observability.request_context_middleware import (
+    RequestContextMiddleware,
+    request_id_context,
 )
 
 
@@ -16,3 +29,73 @@ def test_application_has_fixed_metadata_and_cors_is_disabled_by_default(
 
     assert application.title == "${project_name}"
     assert len(application.user_middleware) == 1
+
+
+def test_error_supports_normal_exception_propagation() -> None:
+    @contextmanager
+    def boundary() -> Iterator[None]:
+        yield
+
+    error = ApplicationError("conflict", "Already exists", 409)
+    with pytest.raises(ApplicationError) as caught, boundary():
+        raise error
+    assert caught.value is error
+    assert str(error) == "Already exists"
+
+
+def test_json_log_preserves_exception_and_explicit_request_id() -> None:
+    try:
+        raise ValueError("diagnostic detail")
+    except ValueError as error:
+        record = logging.LogRecord(
+            "application",
+            logging.ERROR,
+            __file__,
+            1,
+            "failed %s",
+            ("request",),
+            (type(error), error, error.__traceback__),
+        )
+    record.request_id = "failed-request"
+    payload = json.loads(JsonLogFormatter().format(record))
+    assert payload["message"] == "failed request"
+    assert payload["request_id"] == "failed-request"
+    assert "ValueError: diagnostic detail" in payload["exception"]
+    assert "Traceback" in payload["exception"]
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_concurrent_request_context_is_isolated_and_reset(fail: bool) -> None:
+    async def exercise() -> None:
+        seen: dict[str, str] = {}
+
+        async def endpoint(scope: Scope, receive: Receive, send: Send) -> None:
+            await asyncio.sleep(0)
+            seen[scope["path"]] = request_id_context.get()
+            if fail:
+                raise ValueError("test failure")
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+
+        async def receive() -> Message:
+            return {"type": "http.request", "body": b""}
+
+        async def send(message: Message) -> None:
+            pass
+
+        async def request(identifier: str) -> None:
+            scope: Scope = {
+                "type": "http",
+                "path": identifier,
+                "headers": [(b"x-request-id", identifier.encode())],
+            }
+            try:
+                await RequestContextMiddleware(endpoint)(scope, receive, send)
+            except ValueError:
+                assert fail
+            assert request_id_context.get() == "-"
+
+        await asyncio.gather(request("one"), request("two"))
+        assert seen == {"one": "one", "two": "two"}
+
+    asyncio.run(exercise())

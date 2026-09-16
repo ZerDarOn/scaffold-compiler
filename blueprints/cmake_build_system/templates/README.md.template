@@ -4,6 +4,9 @@ A small C11 command-line project with a reusable library boundary and CTest cove
 
 ## Build and test
 
+Requirements: CMake 3.20+, Ninja, and a C11 compiler available in your shell.
+On Windows with MSVC, run from a Developer PowerShell or Developer Command Prompt.
+
 ```sh
 cmake --preset default
 cmake --build --preset default
@@ -11,3 +14,11 @@ ctest --preset default
 ```
 
 The executable is written to `build/${target_name}` (`build/${target_name}.exe` on Windows).
+
+## Extend the project
+
+Keep reusable code in `src/calculator.c` (public declarations in `include/`), and
+command-line behavior in `src/main.c`. Add new source files to the library target
+in `CMakeLists.txt`. Tests use explicit checks rather than `assert`, so they also
+run in Release builds. The sample addition reports overflow without changing its
+output argument; callers must check the returned boolean.

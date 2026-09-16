@@ -1,6 +1,9 @@
 #ifndef ${target_name_upper}_CALCULATOR_H
 #define ${target_name_upper}_CALCULATOR_H
 
-int calculator_add(int left, int right);
+#include <stdbool.h>
+
+/* On overflow or a null result pointer, return false without changing output. */
+bool calculator_add(int left, int right, int *result);
 
 #endif

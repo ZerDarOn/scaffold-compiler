@@ -1,6 +1,7 @@
 """One transaction-scoped SQLAlchemy session per request."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from typing import cast
 
 from fastapi import Request
@@ -13,7 +14,9 @@ def create_session_factory(engine: AsyncEngine) -> AsyncSessionFactory:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
+@asynccontextmanager
 async def transaction_session(factory: AsyncSessionFactory) -> AsyncIterator[AsyncSession]:
+    """Commit on success; roll back before propagating failure or cancellation."""
     async with factory() as session:
         try:
             yield session
@@ -23,7 +26,11 @@ async def transaction_session(factory: AsyncSessionFactory) -> AsyncIterator[Asy
             raise
 
 
-async def database_session(request: Request) -> AsyncIterator[AsyncSession]:
+async def database_session(request: Request) -> AsyncGenerator[AsyncSession]:
+    """Use Depends(database_session, scope="function") to commit before sending a response.
+
+    Streaming responses and background tasks should own their own short-lived sessions.
+    """
     factory = cast(AsyncSessionFactory, request.app.state.database_session_factory)
-    async for session in transaction_session(factory):
+    async with transaction_session(factory) as session:
         yield session

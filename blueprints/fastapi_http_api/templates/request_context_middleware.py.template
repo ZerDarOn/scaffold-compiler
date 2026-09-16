@@ -21,13 +21,15 @@ class RequestContextMiddleware:
             await self.application(scope, receive, send)
             return
         headers = dict(scope.get("headers", []))
-        supplied = headers.get(REQUEST_ID_HEADER.encode(), b"").decode(errors="ignore")
+        supplied = headers.get(REQUEST_ID_HEADER.encode(), b"").decode("latin-1")
         request_id = supplied if _SAFE_REQUEST_ID.fullmatch(supplied) else uuid4().hex
+        # ServerErrorMiddleware handles unhandled errors after this context is reset.
+        scope.setdefault("state", {})["request_id"] = request_id
         token = request_id_context.set(request_id)
 
         async def send_with_request_id(message: Message) -> None:
             if message["type"] == "http.response.start":
-                MutableHeaders(scope=message).append(REQUEST_ID_HEADER, request_id)
+                MutableHeaders(scope=message)[REQUEST_ID_HEADER] = request_id
             await send(message)
 
         try:

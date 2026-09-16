@@ -1,5 +1,6 @@
 """Readiness probe backed by a real PostgreSQL round trip."""
 
+import asyncio
 import logging
 
 from sqlalchemy import text
@@ -9,11 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 LOGGER = logging.getLogger(__name__)
 
 
-async def database_is_ready(engine: AsyncEngine) -> bool:
+async def database_is_ready(engine: AsyncEngine, *, timeout_seconds: float = 2.0) -> bool:
+    """Bound connection acquisition and query time; let cancellation propagate."""
     try:
-        async with engine.connect() as connection:
+        async with asyncio.timeout(timeout_seconds), engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
-    except SQLAlchemyError:
-        LOGGER.warning("database_readiness_failed")
+    except (SQLAlchemyError, OSError) as error:
+        # TimeoutError is an OSError. Do not log raw driver errors or connection URLs.
+        LOGGER.warning("database_readiness_failed category=%s", type(error).__name__)
         return False
     return True

@@ -1,5 +1,13 @@
+#include <limits.h>
+#include <stddef.h>
+
 #include "${target_name}/calculator.h"
 
-int calculator_add(int left, int right) {
-    return left + right;
+bool calculator_add(int left, int right, int *result) {
+    if (result == NULL || (right > 0 && left > INT_MAX - right) ||
+        (right < 0 && left < INT_MIN - right)) {
+        return false;
+    }
+    *result = left + right;
+    return true;
 }

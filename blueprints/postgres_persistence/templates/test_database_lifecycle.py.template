@@ -1,0 +1,84 @@
+import asyncio
+from typing import cast
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from fastapi import FastAPI
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncEngine
+
+from ${package_name}.persistence.database_engine import database_lifespan
+from ${package_name}.persistence.database_readiness import database_is_ready
+
+
+def mock_engine(execute: AsyncMock) -> tuple[AsyncEngine, MagicMock]:
+    connection = MagicMock()
+    connection.execute = execute
+    context = MagicMock()
+    context.__aenter__ = AsyncMock(return_value=connection)
+    context.__aexit__ = AsyncMock(return_value=False)
+    engine = MagicMock(spec=AsyncEngine)
+    engine.connect.return_value = context
+    return cast(AsyncEngine, engine), context
+
+
+@pytest.mark.parametrize("error", [None, OSError("private URL"), SQLAlchemyError("private URL")])
+def test_readiness_releases_connection_and_redacts_failures(
+    error: Exception | None,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    engine, context = mock_engine(AsyncMock(side_effect=error))
+    assert asyncio.run(database_is_ready(engine)) is (error is None)
+    context.__aexit__.assert_awaited_once()
+    assert "private URL" not in caplog.text
+
+
+def test_readiness_covers_connection_acquisition_failure() -> None:
+    engine, context = mock_engine(AsyncMock())
+    context.__aenter__.side_effect = ConnectionRefusedError("not listening")
+    assert asyncio.run(database_is_ready(engine)) is False
+    context.__aexit__.assert_not_awaited()
+
+
+@pytest.mark.parametrize("during_connect", [False, True])
+def test_readiness_has_a_bounded_wait(during_connect: bool) -> None:
+    async def wait_forever(*_args: object) -> None:
+        await asyncio.Future()
+
+    engine, context = mock_engine(AsyncMock())
+    if during_connect:
+        context.__aenter__.side_effect = wait_forever
+    else:
+        context.__aenter__.return_value.execute.side_effect = wait_forever
+    assert asyncio.run(database_is_ready(engine, timeout_seconds=0.01)) is False
+    if not during_connect:
+        context.__aexit__.assert_awaited_once()
+
+
+@pytest.mark.parametrize("error", [asyncio.CancelledError(), ValueError("programming error")])
+def test_readiness_does_not_swallow_cancellation_or_programming_errors(
+    error: BaseException,
+) -> None:
+    engine, context = mock_engine(AsyncMock(side_effect=error))
+    with pytest.raises(type(error)):
+        asyncio.run(database_is_ready(engine))
+    context.__aexit__.assert_awaited_once()
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_engine_is_disposed_on_lifespan_exit(fail: bool) -> None:
+    engine = MagicMock(spec=AsyncEngine)
+    engine.dispose = AsyncMock()
+    application = FastAPI()
+
+    async def exercise() -> None:
+        try:
+            async with database_lifespan(cast(AsyncEngine, engine))(application):
+                assert application.state.database_engine is engine
+                if fail:
+                    raise RuntimeError("shutdown")
+        except RuntimeError:
+            assert fail
+        engine.dispose.assert_awaited_once()
+
+    asyncio.run(exercise())

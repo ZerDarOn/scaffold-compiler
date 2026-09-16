@@ -1,10 +1,11 @@
 """Public application error type."""
 
-from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
 class ApplicationError(Exception):
-    code: str
-    message: str
-    status_code: int = 400
+    """An intentional public error; never include secrets in its message."""
+
+    def __init__(self, code: str, message: str, status_code: int = 400) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status_code = status_code

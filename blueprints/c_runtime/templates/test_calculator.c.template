@@ -1,5 +1,28 @@
+#include <limits.h>
+#include <stddef.h>
+#include <stdio.h>
+
 #include "${target_name}/calculator.h"
 
 int main(void) {
-    return calculator_add(20, 22) == 42 ? 0 : 1;
+    const struct { int left; int right; int expected; } cases[] = {
+        {20, 22, 42}, {0, 0, 0}, {-20, -22, -42}, {-20, 22, 2},
+        {INT_MAX, 0, INT_MAX}, {INT_MIN, 0, INT_MIN}, {INT_MAX, INT_MIN, -1}
+    };
+    for (size_t index = 0; index < sizeof(cases) / sizeof(cases[0]); ++index) {
+        int result = 0;
+        if (!calculator_add(cases[index].left, cases[index].right, &result) ||
+            result != cases[index].expected) {
+            fprintf(stderr, "addition case %zu failed\n", index);
+            return 1;
+        }
+    }
+    int result = 123;
+    if (calculator_add(INT_MAX, 1, &result) || result != 123 ||
+        calculator_add(INT_MIN, -1, &result) || result != 123 ||
+        calculator_add(1, 2, NULL)) {
+        fputs("addition failure contract violated\n", stderr);
+        return 1;
+    }
+    return 0;
 }

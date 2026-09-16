@@ -36,12 +36,14 @@ POSTGRES_PATHS = frozenset(
     {
         "alembic.ini",
         "migrations/env.py",
+        "migrations/script.py.mako",
         "migrations/versions/.gitkeep",
         "src/{package_name}/persistence/__init__.py",
         "src/{package_name}/persistence/database_engine.py",
         "src/{package_name}/persistence/database_readiness.py",
         "src/{package_name}/persistence/database_session.py",
         "tests/unit/test_database_session.py",
+        "tests/unit/test_database_lifecycle.py",
     }
 )
 DOCKER_PATHS = frozenset({".dockerignore", "Dockerfile"})

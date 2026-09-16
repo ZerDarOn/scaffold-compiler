@@ -1,10 +1,50 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"errors"
+	"testing"
+)
 
 func TestAdd(t *testing.T) {
 	t.Parallel()
-	if result := add(20, 22); result != 42 {
-		t.Fatalf("add(20, 22) = %d; want 42", result)
+	for _, tc := range []struct {
+		name              string
+		left, right, want int
+	}{
+		{"positive", 20, 22, 42},
+		{"zero", 0, 0, 0},
+		{"negative", -20, -22, -42},
+		{"mixed", -20, 22, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := add(tc.left, tc.right); got != tc.want {
+				t.Fatalf("add(%d, %d) = %d; want %d", tc.left, tc.right, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRun(t *testing.T) {
+	t.Parallel()
+	var output bytes.Buffer
+	if err := run(&output); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "scaffold compiler go example\n" {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+type failingWriter struct{ err error }
+
+func (w failingWriter) Write(p []byte) (int, error) { return 0, w.err }
+
+func TestRunPropagatesWriteError(t *testing.T) {
+	t.Parallel()
+	want := errors.New("output unavailable")
+	if got := run(failingWriter{want}); !errors.Is(got, want) {
+		t.Fatalf("run error = %v; want %v", got, want)
 	}
 }

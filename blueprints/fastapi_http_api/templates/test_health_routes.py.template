@@ -1,3 +1,6 @@
+import json
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,6 +10,9 @@ from ${package_name}.application import (
 from ${package_name}.configuration.application_settings import (
     ApplicationSettings,
 )
+from ${package_name}.errors.application_error import ApplicationError
+from ${package_name}.observability.logging_configuration import JsonLogFormatter
+from ${package_name}.observability.request_context_middleware import request_id_context
 
 
 def test_health_and_openapi_contract(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -33,3 +39,76 @@ def test_failed_readiness_returns_service_unavailable(
 
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
+
+
+@pytest.fixture
+def settings(monkeypatch: pytest.MonkeyPatch) -> ApplicationSettings:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
+    return ApplicationSettings()
+
+
+@pytest.mark.parametrize("supplied", ["valid.request-123", "", "bad id", "x" * 129])
+def test_request_id_validation_and_reset(settings: ApplicationSettings, supplied: str) -> None:
+    with TestClient(create_application(settings=settings)) as client:
+        response = client.get("/health/live", headers={"x-request-id": supplied})
+    actual = response.headers["x-request-id"]
+    if supplied == "valid.request-123":
+        assert actual == supplied
+    else:
+        assert len(actual) == 32
+        int(actual, 16)
+    assert request_id_context.get() == "-"
+
+
+def test_expected_error_contract(settings: ApplicationSettings) -> None:
+    application = create_application(settings=settings)
+
+    @application.get("/expected-error")
+    async def expected_error() -> None:
+        raise ApplicationError("conflict", "Already exists", 409)
+
+    with TestClient(application) as client:
+        response = client.get("/expected-error", headers={"x-request-id": "expected"})
+    assert response.status_code == 409
+    assert response.json() == {"error": {"code": "conflict", "message": "Already exists"}}
+    assert response.headers["x-request-id"] == "expected"
+
+
+def test_unexpected_error_is_private_and_correlated(
+    settings: ApplicationSettings,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    application = create_application(settings=settings)
+
+    @application.get("/unexpected-error")
+    async def unexpected_error() -> None:
+        raise RuntimeError("private diagnostic")
+
+    with (
+        caplog.at_level(logging.ERROR),
+        TestClient(
+            application,
+            raise_server_exceptions=False,
+        ) as client,
+    ):
+        response = client.get("/unexpected-error", headers={"x-request-id": "failed-123"})
+    assert response.status_code == 500
+    assert response.headers["x-request-id"] == "failed-123"
+    assert response.json() == {
+        "error": {"code": "internal_error", "message": "Internal server error."},
+    }
+    record = next(r for r in caplog.records if r.message == "unexpected_application_error")
+    payload = json.loads(JsonLogFormatter().format(record))
+    assert payload["request_id"] == "failed-123"
+    assert "RuntimeError: private diagnostic" in payload["exception"]
+    assert request_id_context.get() == "-"
+
+
+def test_cors_only_allows_configured_origin(settings: ApplicationSettings) -> None:
+    settings.cors_allowed_origins = ["https://client.example"]
+    with TestClient(create_application(settings=settings)) as client:
+        allowed = client.get("/health/live", headers={"Origin": "https://client.example"})
+        denied = client.get("/health/live", headers={"Origin": "https://untrusted.example"})
+    assert allowed.headers["access-control-allow-origin"] == "https://client.example"
+    assert "access-control-allow-origin" not in denied.headers
+    assert "access-control-allow-credentials" not in allowed.headers
